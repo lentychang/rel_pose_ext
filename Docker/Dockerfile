@@ -1,0 +1,8 @@
+ARG DOCKER_BASE_IMAGE=ros-docker-base
+FROM $DOCKER_BASE_IMAGE
+
+ARG ROS_DISTRO=kinetic
+
+
+
+

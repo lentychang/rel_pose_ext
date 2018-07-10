@@ -1,2 +1,2 @@
-# rel_pose_ext
-relative pose extration
+# ros_base
+dockerfile and compose file for setup ros(kinetic) 

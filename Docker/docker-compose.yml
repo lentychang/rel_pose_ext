@@ -1,0 +1,22 @@
+version: '2'
+services:
+  rel_pose_ext:
+    image: ros-docker-base
+    environment:
+     # ROS_IP: $ROS_IP
+      ROS_MASTER_URI: $ROS_MASTER_URI
+      DISPLAY: :0
+      QT_X11_NO_MITSHM: '1'
+    stdin_open: true
+    network_mode: host
+    volumes:
+      - $HOME/exchange:/root/exchange
+      - $HOME/catkin_ws/src/rel_pose_ext:/root/catkin_ws/src/rel_pose_ext
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - $HOME/.Xauthority:/root/.Xauthority
+    privileged: true
+    devices:
+    - /dev/bus/usb:/dev/bus/usb
+    tty: true
+    command: tail -f /dev/null 
+
