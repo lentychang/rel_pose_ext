@@ -41,7 +41,7 @@ if __name__ == '__main__':
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
                 'cylinder_with_slot.stp', 'cylinders.stp']
-    shapeFromModel = read_step_file(os.path.join('.', 'models', fileList[6]))
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[6]))
 
     if(run_display):
         display.DisplayShape(shapeFromModel, update=True)
