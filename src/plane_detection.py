@@ -9,6 +9,7 @@ from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
 import ipdb
 from OCC.TopLoc import TopLoc_Location    
 from OCC.GProp import GProp_GProps
+from OCC.BRepGProp import brepgprop_VolumeProperties
 
 if __name__ == '__main__':
 
