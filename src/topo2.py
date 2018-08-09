@@ -14,9 +14,8 @@ from core_topology_traverse import Topo
 import logging
 import ipdb
 
-from step_utils import read_step_file
+from dataIO import read_step_file, Display
 import os.path
-from OCC.Display.SimpleGui import init_display
 
 
 class RecognizeTopo():
@@ -44,12 +43,16 @@ class RecognizeTopo():
                            'surfaceOfRevolution', 'else']
 
         shape_idx = self.__shapeTypeList.index(self.shape_type)
+        if shape_idx >= self.__shapeTypeList.index('solid'):
+            self.solids = list(self.topo.solids())
         if shape_idx >= self.__shapeTypeList.index('face'):
             self.faces = self.__extract_faceType_all()
         if shape_idx >= self.__shapeTypeList.index('edge'):
             self.edges = self.__extract_edgeType_all()
+        '''
         else:
             print('other topods type not yet implemented')
+        '''
 
     def planes(self):
         return self.faces['plane']
@@ -131,9 +134,14 @@ class RecognizeTopo():
 
         for face in self.topo.faces():
             a_face = self.__extract_faceType(face)
-            for key in self.face_types:
-                if key in a_face:
+            key = list(a_face.keys())[0]
+            if key in self.face_types:
+                if key in faces:
                     faces[key].append(a_face[key])
+                else:
+                    faces[key] = [a_face[key]]
+            else:
+                print('keys from this value is not defined in this class!!')
         return faces
 
     def __extract_edgeType(self, an_edge):
@@ -173,41 +181,21 @@ class RecognizeTopo():
         return edges
 
 
-
-
 if __name__ == '__main__':
-    ##############################
-    # logging.basicConfig(filename="logging.txt", filemode='w',
-    #                               level=logging.warning)
-    run_display = True
-    if(run_display):
-        display, start_display, add_menu, add_function_to_menu = init_display()
-        display.SetSelectionModeEdge()
-        # display.register_select_callback(click_edge)
-        # first loads the STEP file and display
+    logging.basicConfig(filename="logging.txt", filemode='w', level=logging.warning)
+
     fileList = ['lf064-01.stp',
                 'cylinder_group_test.stp',
-                'cylinder_cut.stp'
+                'cylinder_cut.stp',
                 'cylinder_cut2.stp',
                 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp',
                 'cylinder_with_side_slot.stp',
                 'cylinder_with_slot.stp',
-                'cylinders.stp']
-    shapeFromModel = read_step_file(os.path.join('.', 'models', fileList[6]))
-    ##############################
+                'cylinders.stp',
+                'compound_solid_face-no-contact.stp']
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[9]))
+
     test = RecognizeTopo(shapeFromModel)
+    # gui = Display(shapeFromModel, run_display=True)    
 
-    ipdb.set_trace()
-
-    ##############################
-    if(run_display):
-        display.DisplayShape(shapeFromModel, update=True)
-        add_menu('recognition')
-        # add_function_to_menu('recognition', recognize_batch)
-        add_menu('Selection Mode')
-        # add_function_to_menu('Selection Mode', select_edge)
-        # add_function_to_menu('Selection Mode', select_face)
-
-        start_display()
-    ##############################
