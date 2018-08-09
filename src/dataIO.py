@@ -55,7 +55,7 @@ class Display():
             self.add_function_to_menu('Selection Mode', self.face_select_mode)
             self.add_function_to_menu('Show', self.selected_shape_info)
             self.start_display()
-        
+
     def add_shape(self, shp):
         self.shape_list.append(shp)
         self.display.DisplayShape(shp, update=True)
@@ -94,8 +94,9 @@ class Display():
                 print('This edge type is not implemented !!')
 
     def edge_select_mode(self):
+        if self.selectMode == 'Face':
+            self.display.unregister_callback(self.click_face)
         self.selectMode = 'Edge'
-        self.display.unregister_callback(self.click_face)
         self.display.SetSelectionModeEdge()
         self.display.DisplayShape(self.shape, update=True)
         self.display.register_select_callback(self.click_edge)
@@ -106,8 +107,8 @@ class Display():
         """
         # shp = A list of TopoDS_Shape; type=Face, if click a place without model, it is null
         # kwargs xy coordinate in 2D where mouse is clicked
-        print("\n\n")
-        print("Clicked !!")
+        print("\nClicked - edge select mode !!")
+        print('===============================================')
         for edge in edge_click:  # this should be a TopoDS_Face TODO check it is
             print("Edge selected: ", edge)  # TopoDS_Shape
             shp = Topo(edge)
@@ -115,8 +116,9 @@ class Display():
             self.selected_shape_info()
 
     def face_select_mode(self):
+        if self.selectMode == 'Edge':
+            self.display.unregister_callback(self.click_edge)
         self.selectMode = 'Face'
-        self.display.unregister_callback(self.click_edge)
         self.display.SetSelectionModeFace()
         self.display.DisplayShape(self.shape, update=True)
         self.display.register_select_callback(self.click_face)
@@ -128,7 +130,8 @@ class Display():
         # shp = A list of TopoDS_Shape; type=Face, if click a place without model, it is null
         # kwargs xy coordinate in 2D where mouse is clicked
 
-        print("Click Face !!")
+        print("\nClicked - face select Mode!!")
+        print('===============================================')
 
         for face in face_click:  # this should be a TopoDS_Face TODO check it is
             print("Face selected: ", face)  # TopoDS_Shape
