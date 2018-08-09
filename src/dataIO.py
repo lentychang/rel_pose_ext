@@ -7,8 +7,9 @@ import os.path
 import sys
 import logging
 import ipdb
-
-
+from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Line
+from core_topology_traverse import Topo
 from OCC.Display.SimpleGui import init_display
 
 
@@ -33,28 +34,73 @@ def read_step_file(filename):
 class Display():
     def __init__(self, shp, run_display=False, *args, **kwargs):
         self.shape = shp
-        if(run_display):
+        self.shape_list = [shp]
+        self.shape_selected = shp
+        self.open(run_display=run_display)
+
+    def open(self, shape=None, run_display=True):
+        # Todo: display shape from shape_list
+        if run_display:
+            if shape is not None:
+                self.shape = shape
             self.display, self.start_display, self.add_menu, self.add_function_to_menu = init_display()
             self.display.register_select_callback(self.click_edge)
             self.display.SetSelectionModeEdge()
+            self.selectMode = 'Edge'
 
             self.display.DisplayShape(self.shape, update=True)
             self.add_menu('Selection Mode')
+            self.add_menu('Show')
             self.add_function_to_menu('Selection Mode', self.edge_select_mode)
             self.add_function_to_menu('Selection Mode', self.face_select_mode)
+            self.add_function_to_menu('Show', self.selected_shape_info)
             self.start_display()
+        
+    def add_shape(self, shp):
+        self.shape_list.append(shp)
+        self.display.DisplayShape(shp, update=True)
 
-    def update_shape(self, shp):
-        self.shape = shp
-        self.display.DisplayShape(self.shape, update=True)
+    def remove_shape(self, shp):
+        if shp in self.shape_list:
+            self.shape_list.remove(shp)
+            self.display.DisplayShape(self.shape_list[0], update=False)
+            for i in range(1, len(self.shape_list)):
+                self.display.DisplayShape(self.shape_list[i], update=True)
+        else:
+            logging.warning('The shape given is not in shown in the display')
+
+    # Todo
+    # def get_geom_info(shape):
+
+    def selected_shape_info(self):
+        if self.selectMode == 'Face':
+            print(self.shape_selected)
+            surf = BRepAdaptor_Surface(self.shape_selected, True)
+            if surf.GetType() == GeomAbs_Plane:
+                gp_pln = surf.Plane()
+                normal = gp_pln.Axis().Direction()
+                print('plane normal: (%.3f, %.3f, %.3f)' % (normal.X(), normal.Y(), normal.Z()))
+            else:
+                print('This surface type is not implemented !!')
+
+        elif self.selectMode == 'Edge':
+            print(self.shape_selected)
+            edge = BRepAdaptor_Curve(self.shape_selected)
+            if edge.GetType() == GeomAbs_Line:
+                gp_lin = edge.Line()
+                direction = gp_lin.Direction()
+                print('Line direction: (%.3f, %.3f, %.3f)' % (direction.X(), direction.Y(), direction.Z()))
+            else:
+                print('This edge type is not implemented !!')
 
     def edge_select_mode(self):
+        self.selectMode = 'Edge'
         self.display.unregister_callback(self.click_face)
         self.display.SetSelectionModeEdge()
         self.display.DisplayShape(self.shape, update=True)
         self.display.register_select_callback(self.click_edge)
 
-    def click_edge(self, edg_local, *kwargs):
+    def click_edge(self, edge_click, *kwargs):
         """ This is the function called every time
         an edge is clicked in the 3d view
         """
@@ -62,16 +108,20 @@ class Display():
         # kwargs xy coordinate in 2D where mouse is clicked
         print("\n\n")
         print("Clicked !!")
-        for edge in edg_local:  # this should be a TopoDS_Face TODO check it is
+        for edge in edge_click:  # this should be a TopoDS_Face TODO check it is
             print("Edge selected: ", edge)  # TopoDS_Shape
+            shp = Topo(edge)
+            self.shape_selected = list(shp.edges())[0]
+            self.selected_shape_info()
 
     def face_select_mode(self):
+        self.selectMode = 'Face'
         self.display.unregister_callback(self.click_edge)
         self.display.SetSelectionModeFace()
         self.display.DisplayShape(self.shape, update=True)
         self.display.register_select_callback(self.click_face)
 
-    def click_face(self, shp_local, *kwargs):
+    def click_face(self, face_click, *kwargs):
         """ This is the function called every time
         a face is clicked in the 3d view
         """
@@ -80,8 +130,11 @@ class Display():
 
         print("Click Face !!")
 
-        for shape in shp_local:  # this should be a TopoDS_Face TODO check it is
-            print("Face selected: ", shape)  # TopoDS_Shape
+        for face in face_click:  # this should be a TopoDS_Face TODO check it is
+            print("Face selected: ", face)  # TopoDS_Shape
+            shp = Topo(face)
+            self.shape_selected = list(shp.faces())[0]
+            self.selected_shape_info()
 
 
 if __name__ == '__main__':
@@ -91,9 +144,10 @@ if __name__ == '__main__':
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
                 'cylinder_with_slot.stp', 'cylinders.stp']
-    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[6]))
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[0]))
     showShapes = shapeFromModel
 
-    Display(showShapes, run_display=True)
+    frame = Display(showShapes, run_display=True)
+    print('\n\ntype "frame.open()" to reopen the frame !!!')
+    ipdb.set_trace()
 
-    
