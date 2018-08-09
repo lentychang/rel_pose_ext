@@ -31,7 +31,7 @@ def group_planes_by_axis(shape):
     for pln in planeList:
         gp_pln = BRepAdaptor_Surface(pln).Plane()
         normal = gp_pln.Axis().Direction()
-        key = '%.3f,%.3f,%.3f' % (normal.X(), normal.Y(), normal.Z())
+        key = '%.6f,%.6f,%.6f' % (normal.X(), normal.Y(), normal.Z())
         if key not in pln_dict.keys():
             pln_dict[key] = [pln]
         else:
