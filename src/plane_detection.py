@@ -36,6 +36,10 @@ if __name__ == '__main__':
             pln_dict[key] = [pln]
         else:
             pln_dict[key].append(pln)
+def centerOfMass(solid):
+    prop = GProp_GProps()
+    brepgprop_VolumeProperties(solid, prop)
+    return prop.CentreOfMass()
     
     ipdb.set_trace()
 
