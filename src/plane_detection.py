@@ -1,12 +1,14 @@
 
 
-from step_utils import read_step_file
+from dataIO import read_step_file, Display
 from topo2 import RecognizeTopo
 from OCC.Display.SimpleGui import init_display
 import os.path
 import logging
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
 import ipdb
+from OCC.TopLoc import TopLoc_Location    
+from OCC.GProp import GProp_GProps
 
 if __name__ == '__main__':
 
@@ -55,6 +57,8 @@ def shp_trsf():
     #frame.display.Context.UpdateCurrentViewer()
     #print(shp2.HashCode(100000000))
 '''
+
+
 def centerOfMass(solid):
     prop = GProp_GProps()
     brepgprop_VolumeProperties(solid, prop)
