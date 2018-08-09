@@ -36,6 +36,25 @@ if __name__ == '__main__':
             pln_dict[key] = [pln]
         else:
             pln_dict[key].append(pln)
+# Todo
+'''
+def shp_trsf():
+    shp2 = read_step_file(os.path.join('..', 'models', fileList[0]))
+    # ipdb.set_trace()
+    frame.update_shape(shp2)
+    # ais_shp2 = frame.display.DisplayShape(shp2, update=True)
+    # the point want to be origin express in local  # the local Z axis expressed in local system expressed in global coordinates 
+    ax3 = gp_Ax3(gp_Pnt(0., 0., -60.), gp_Dir(0.7071067811865, 0., -0.7071067811865))
+    shp2Trsf = gp_Trsf()
+    shp2Trsf.SetTransformation(ax3)
+    shp2Toploc = TopLoc_Location(shp2Trsf)
+    shp2.Move(shp2Toploc)
+    frame.update_shape(shp2)
+
+    #frame.display.Context.SetLocation(ais_shp2, shp2Toploc)
+    #frame.display.Context.UpdateCurrentViewer()
+    #print(shp2.HashCode(100000000))
+'''
 def centerOfMass(solid):
     prop = GProp_GProps()
     brepgprop_VolumeProperties(solid, prop)
