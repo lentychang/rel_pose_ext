@@ -28,8 +28,19 @@ if __name__ == '__main__':
                 'cylinder_with_slot.stp', 'cylinders.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[6]))
 
-    # group planes with normal vector
-    planeList = RecognizeTopo(shapeFromModel).planes()
+def group_planes_by_axis(shape):
+    """[summary]
+    Extract all planes from shape, and group them according to their normal
+    vector.
+
+    Arguments:
+        shape {TopoDS_Shape} -- [description]
+
+    Returns:
+        dictionary -- key: normal vector as string)
+                      value: list of TopoDS_Shape(Plane)
+    """
+    planeList = RecognizeTopo(shape).planes()
     pln_dict = {}
     for pln in planeList:
         gp_pln = BRepAdaptor_Surface(pln).Plane()
@@ -39,6 +50,9 @@ if __name__ == '__main__':
             pln_dict[key] = [pln]
         else:
             pln_dict[key].append(pln)
+    return pln_dict
+
+
 # Todo
 '''
 def shp_trsf():
