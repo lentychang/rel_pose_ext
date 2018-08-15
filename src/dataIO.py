@@ -32,6 +32,7 @@ def read_step_file(filename):
         step_reader.TransferRoot(1)
         a_shape = step_reader.Shape(1)
     else:
+        print('Current Path:', os.getcwd())
         print("Error: can't read file.")
         sys.exit(0)
     return a_shape
