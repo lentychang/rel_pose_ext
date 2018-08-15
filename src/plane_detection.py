@@ -41,7 +41,7 @@ def group_planes_by_axis(shape):
 
 def list2gpVec(ls):
     if len(ls) != 3:
-        print('Error, the length of the input list should be 3, [float x, float y, float z]' )
+        print('Error, the length of the input list should be 3, [float x, float y, float z]')
     return gp_Vec(ls[0], ls[1], ls[2])
 
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     a = list2gpVec([0., 1., 0.])
     b = list2gpVec([0.146, 0.985, -0.088])
     c = a.Crossed(b)
-    rev_ax = gp_Dir(c[0], c[1], c[2])
+    rev_ax = gp_Dir(c)
     ax1 = gp_Ax1(pnt2, rev_ax)
     ax3 = gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
     ax3 = ax3.Rotated(ax1, radians(float(ang_list['minVal'])))
