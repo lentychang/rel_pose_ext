@@ -36,8 +36,9 @@ class Display():
         self.shape = shp
         self.shape_list = [shp]
         self.shape_selected = shp
+        self.selectMode = 'Edge'
         self.open(run_display=run_display)
-
+        
     def open(self, shape=None, run_display=True):
         # Todo: display shape from shape_list
         if run_display:
@@ -46,15 +47,19 @@ class Display():
             self.display, self.start_display, self.add_menu, self.add_function_to_menu = init_display()
             self.display.register_select_callback(self.click_edge)
             self.display.SetSelectionModeEdge()
-            self.selectMode = 'Edge'
 
-            self.display.DisplayShape(self.shape, update=True)
+            self.__show_all()
             self.add_menu('Selection Mode')
             self.add_menu('Show')
             self.add_function_to_menu('Selection Mode', self.edge_select_mode)
             self.add_function_to_menu('Selection Mode', self.face_select_mode)
             self.add_function_to_menu('Show', self.selected_shape_info)
             self.start_display()
+
+    def __show_all(self):
+        self.display.DisplayShape(self.shape_list[0], update=False)
+        for i in range(1, len(self.shape_list)):
+            self.display.DisplayShape(self.shape_list[i], update=True)
 
     def add_shape(self, shp):
         self.shape_list.append(shp)
@@ -98,7 +103,7 @@ class Display():
             self.display.unregister_callback(self.click_face)
         self.selectMode = 'Edge'
         self.display.SetSelectionModeEdge()
-        self.display.DisplayShape(self.shape, update=True)
+        self.__show_all()
         self.display.register_select_callback(self.click_edge)
 
     def click_edge(self, edge_click, *kwargs):
@@ -120,7 +125,7 @@ class Display():
             self.display.unregister_callback(self.click_edge)
         self.selectMode = 'Face'
         self.display.SetSelectionModeFace()
-        self.display.DisplayShape(self.shape, update=True)
+        self.__show_all()
         self.display.register_select_callback(self.click_face)
 
     def click_face(self, face_click, *kwargs):
