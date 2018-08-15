@@ -6,7 +6,7 @@ import os.path
 import logging
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
 import ipdb
-from OCC.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf, gp_Ax3, gp_Pln
+from OCC.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf, gp_Ax3, gp_Pln, gp_Vec
 from math import degrees
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
 from OCC.TopLoc import TopLoc_Location    
@@ -40,19 +40,18 @@ def group_planes_by_axis(shape):
 
 
 # Todo
-'''
-def shp_trsf():
-    shp2 = read_step_file(os.path.join('..', 'models', fileList[0]))
+
+def mv2CMass(shp, pnt):
     # ipdb.set_trace()
-    frame.update_shape(shp2)
     # ais_shp2 = frame.display.DisplayShape(shp2, update=True)
     # the point want to be origin express in local  # the local Z axis expressed in local system expressed in global coordinates 
-    ax3 = gp_Ax3(gp_Pnt(0., 0., -60.), gp_Dir(0.7071067811865, 0., -0.7071067811865))
+        
     shp2Trsf = gp_Trsf()
-    shp2Trsf.SetTransformation(ax3)
+    vec = gp_Vec(pnt, gp_Pnt(0, 0, 0))
+    shp2Trsf.SetTranslation(vec)
     shp2Toploc = TopLoc_Location(shp2Trsf)
-    shp2.Move(shp2Toploc)
-    frame.update_shape(shp2)
+    shp.Move(shp2Toploc)
+    return shp
 
     #frame.display.Context.SetLocation(ais_shp2, shp2Toploc)
     #frame.display.Context.UpdateCurrentViewer()
@@ -78,7 +77,7 @@ def find_closest_normal_pair(normal_add, normal_base=None, tolerance=0.5):
         normal_base {dictionary} -- same as normal_base
 
     Keyword Arguments:
-        tolerance {float} -- content: float
+        tolerance {float} -- content: float    vec = [float(i) for i in ang_list['minPair'][0][1].split(',')]
                              the angle within this tolerance [deg] will be consider as the same set. (default: {0.5})
 
     Returns:
