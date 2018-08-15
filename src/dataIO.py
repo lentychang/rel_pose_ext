@@ -8,7 +8,13 @@ import sys
 import logging
 import ipdb
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
-from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Line
+from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_Sphere,\
+                        GeomAbs_Torus, GeomAbs_BezierSurface, GeomAbs_BSplineSurface,\
+                        GeomAbs_SurfaceOfRevolution, GeomAbs_SurfaceOfExtrusion,\
+                        GeomAbs_OffsetSurface, GeomAbs_OtherSurface,\
+                        GeomAbs_Line, GeomAbs_Circle, GeomAbs_Ellipse,\
+                        GeomAbs_Hyperbola, GeomAbs_Parabola, GeomAbs_BezierCurve,\
+                        GeomAbs_BSplineCurve, GeomAbs_OtherCurve
 from core_topology_traverse import Topo
 from OCC.Display.SimpleGui import init_display
 
@@ -85,8 +91,13 @@ class Display():
                 gp_pln = surf.Plane()
                 normal = gp_pln.Axis().Direction()
                 print('plane normal: (%.3f, %.3f, %.3f)' % (normal.X(), normal.Y(), normal.Z()))
+            elif surf.GetType() == GeomAbs_Cylinder:
+                gp_cyl = surf.Cylinder()
+                axis = gp_cyl.Axis().Direction()
+                print('cylinder axis: (%.3f, %.3f, %.3f)' % (axis.X(), axis.Y(), axis.Z()))
             else:
-                print('This surface type is not implemented !!')
+                typeList = ['Plane', 'Cylinder', 'Cone', 'Sphere', 'Torus', 'BezierSurface', 'BSplineSurface', 'SurfaceOfRevolution', 'SurfaceOfExtrusion', 'OffsetSurface', 'OtherSurface']
+                print('This surface type "%s" is not implemented !!' % typeList[surf.GetType()])
 
         elif self.selectMode == 'Edge':
             print(self.shape_selected)
@@ -96,9 +107,12 @@ class Display():
                 direction = gp_lin.Direction()
                 print('Line direction: (%.3f, %.3f, %.3f)' % (direction.X(), direction.Y(), direction.Z()))
             else:
+                typeList = ['Line', 'Circle', 'Ellipse', 'Parabola', 'BezierCurve', 'BSplineCurve', 'OffsetCurve or OtherCurve?', 'OtherCurve']
                 print('This edge type is not implemented !!')
+                print('This surface type "%s" is not implemented !!' % typeList[surf.GetType()])
 
     def edge_select_mode(self):
+        print('Edge select mode activated')
         if self.selectMode == 'Face':
             self.display.unregister_callback(self.click_face)
         self.selectMode = 'Edge'
@@ -121,6 +135,7 @@ class Display():
             self.selected_shape_info()
 
     def face_select_mode(self):
+        print('Face select mode activated')
         if self.selectMode == 'Edge':
             self.display.unregister_callback(self.click_edge)
         self.selectMode = 'Face'
