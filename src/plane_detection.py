@@ -4,10 +4,10 @@ from dataIO import read_step_file, Display
 from topo2 import RecognizeTopo
 import os.path
 import logging
-from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.BRepAdaptor import BRepAdaptor_Surface
 import ipdb
 from OCC.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf, gp_Ax3, gp_Pln, gp_Vec
-from math import degrees
+from math import degrees, radians
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
 from OCC.TopLoc import TopLoc_Location    
 from OCC.GProp import GProp_GProps
@@ -39,13 +39,17 @@ def group_planes_by_axis(shape):
     return pln_dict
 
 
-# Todo
+def list2gpVec(ls):
+    if len(ls) != 3:
+        print('Error, the length of the input list should be 3, [float x, float y, float z]' )
+    return gp_Vec(ls[0], ls[1], ls[2])
+
 
 def mv2CMass(shp, pnt):
     # ipdb.set_trace()
     # ais_shp2 = frame.display.DisplayShape(shp2, update=True)
     # the point want to be origin express in local  # the local Z axis expressed in local system expressed in global coordinates 
-        
+
     shp2Trsf = gp_Trsf()
     vec = gp_Vec(pnt, gp_Pnt(0, 0, 0))
     shp2Trsf.SetTranslation(vec)
@@ -53,9 +57,17 @@ def mv2CMass(shp, pnt):
     shp.Move(shp2Toploc)
     return shp
 
-    #frame.display.Context.SetLocation(ais_shp2, shp2Toploc)
-    #frame.display.Context.UpdateCurrentViewer()
-    #print(shp2.HashCode(100000000))
+
+'''
+# Rotate main axis into global Z axis
+def turn2Z(shp, mainDir):
+    ax3 = gp_Ax3(gp_Pnt(0, 0, 0), mainDir)
+    print('Coordinates:%.3f, %.3f, %.3f' % (ax3.XDirection().X(), ax3.XDirection().Y(), ax3.XDirection().Z()))
+    shp2Trsf = gp_Trsf()
+    shp2Trsf.SetTransformation(ax3)
+    shp2Toploc = TopLoc_Location(shp2Trsf)
+    shp.Move(shp2Toploc)
+    return shp
 '''
 
 
@@ -63,7 +75,7 @@ def centerOfMass(solid):
     prop = GProp_GProps()
     brepgprop_VolumeProperties(solid, prop)
     return prop.CentreOfMass()
-    
+
 
 def find_closest_normal_pair(normal_add, normal_base=None, tolerance=0.5):
     """[summary]
@@ -131,12 +143,87 @@ if __name__ == '__main__':
     pnt2 = centerOfMass(solid2)
 
     normal_group1 = group_planes_by_axis(solid1)
+    normal_group2 = group_planes_by_axis(solid2)   
+    ang_list = find_closest_normal_pair(normal_group2, normal_base=normal_group1)
+
+    frame = Display(solid1, run_display=True)
+    frame.add_shape(solid2)
+    # Get rotation axis
+    # [ToDo] the angle value related to rotation direction is not define clearly
+    # [ToDo] adapt a, b with the vector got from ang_list
+    # [ToDo] Add condition: if after rotation the angle between two axis is bigger then reverse one axis
+    # [ToDo] use While loop to rotate until angle smaller than given angle tolerance
+    a = list2gpVec([0., 1., 0.])
+    b = list2gpVec([0.146, 0.985, -0.088])
+    c = a.Crossed(b)
+    rev_ax = gp_Dir(c[0], c[1], c[2])
+    ax1 = gp_Ax1(pnt2, rev_ax)
+    ax3 = gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
+    ax3 = ax3.Rotated(ax1, radians(float(ang_list['minVal'])))
+    shp2Trsf = gp_Trsf()
+    shp2Trsf.SetTransformation(ax3)
+    shp2Toploc = TopLoc_Location(shp2Trsf)
+    solid2.Move(shp2Toploc)
+
+    # Plane distance detection
+    # [ToDo] a better algorithm to choose the correct plane is needed
+    normal_group1 = group_planes_by_axis(solid1)
     normal_group2 = group_planes_by_axis(solid2)
 
+    min_dist = 10.0
+    ang_list = find_closest_normal_pair(normal_group2, normal_base=normal_group1)
+    # [ToDo] A better distance evaluation, how to select a correct point which is inside the wire
+    for topoPln1 in normal_group1[ang_list['minPair'][0][0]]:
+        surf1 = BRepAdaptor_Surface(topoPln1, True)
+        pln1 = surf1.Plane()
+        plnpnt1 = pln1.Location()
+
+        for topoPln2 in normal_group2[ang_list['minPair'][0][1]]:
+            surf2 = BRepAdaptor_Surface(topoPln2, True)
+            pln2 = surf2.Plane()
+            print('Distance:', pln2.Distance(plnpnt1))
+            min_dist = min(pln2.Distance(plnpnt1), min_dist)
+
+    # Move plane to be coincident
+    # [ToDo] vector direction need to be determined...
+    # [ToDo] while loop to move until distance smaller than given distance tolerance
+    ax3 = gp_Ax3()
+    shp2Trsf = gp_Trsf()    
+    dirList = [float(i) for i in ang_list['minPair'][0][0].split(',')]    
+    mvVec = gp_Vec(dirList[0], dirList[1], dirList[2]).Normalized().Multiplied(-1.0 * min_dist)
+    shp2Trsf.SetTranslation(mvVec)
+    shp2Toploc = TopLoc_Location(shp2Trsf)
+    solid2.Move(shp2Toploc)
+
+    ipdb.set_trace()
+
+    # Another mether to align the normal of plane: too complicated
+    '''
+    # extract normal vector into a list
+    toVec = [float(i) for i in ang_list['minPair'][0][0].split(',')]
+    xVec = [1.0, 0.0, 0.0]
+    fromVec = [float(i) for i in ang_list['minPair'][0][1].split(',')]
+    fromDir = gp_Dir(fromVec[0], fromVec[1], fromVec[2])
+    toDir = gp_Dir(toVec[0], toVec[1], toVec[2])
+    toDir = gp_Dir(0.0, 1.0, 0.0)
+    # solid 1 turn to Z
+    turn2Z(solid1, toDir)
+    # solid 2 move to center of Mass
+    mv2CMass(solid2, pnt2)
+    # solid2 turn to Z
+    turn2Z(solid2, toDir)
+    ax3 = gp_Ax3(gp_Pnt(0, 0, 0), toDir)
+    shp2Trsf = gp_Trsf()
+    shp2Trsf.SetTransformation(ax3)
+    pnt2 = pnt2.Transformed(shp2Trsf)
+    # align to Z
+    toDir2 = gp_Dir(-0.088, 0.146, 0.985)
+    turn2Z(solid2, toDir2)
+    mv2CMass(solid2, pnt2.Mirrored(gp_Pnt(0,0,0)))
+    '''
     ipdb.set_trace(context=10)
-    ang_list = find_closest_normal_pair(normal_group2)
-    showShapes = shapeFromModel
-    frame = Display(solid2, run_display=True)
+    frame.open()
+
     ipdb.set_trace(context=10)
 
 
