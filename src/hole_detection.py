@@ -8,6 +8,7 @@ import logging
 from OCC.BRepAdaptor import BRepAdaptor_Surface
 import ipdb
 from math import radians
+from core_topology_traverse import Topo
 
 
 def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
@@ -92,6 +93,31 @@ def cylinder_group_radius(cyl_ax_grp, tol=0.1):
     return cyl_rad_grp
 
 
+def find_full_cylinder(cylinder_group):
+    keys = list(cylinder_group.keys())
+    full_cyl_list = {}
+    for key in keys:
+        for i in range(0, len(cylinder_group[key])):
+            counter = 0
+            vtxList1 = list(Topo(cylinder_group[key][i]).vertices())
+            vtxList2 = []
+            for j in range(i + 1, len(cylinder_group[key])):
+                vtxList2 = list(Topo(cylinder_group[key][j]).vertices())
+                for k in vtxList1:
+                    for l in vtxList2:
+                        if k.IsSame(l):
+                            counter = counter + 1
+
+            # After comparision, if both cylinder has the same vertices, they stand for the same full cylinder
+            # Or if there are only two vertices in cylinder surface, it is a full cylinder
+            if (counter == len(vtxList1) and counter == len(vtxList2)) or len(vtxList1) == 2:
+                if key in full_cyl_list:
+                    full_cyl_list[key].append(cylinder_group[key][i])
+                else:
+                    full_cyl_list[key] = [cylinder_group[key][i]]
+    return full_cyl_list
+
+
 if __name__ == '__main__':
     logging.basicConfig(filename="logging.txt", filemode='w',
                         level=logging.warning)
@@ -108,6 +134,9 @@ if __name__ == '__main__':
     ipdb.set_trace(context=10)
     coaxial_cylinders = group_coaxial_cylinders(solid1cylinders)
     cylinder_axis_r_group = cylinder_group_radius(coaxial_cylinders)
+    full_cylinder_group = find_full_cylinder(cylinder_axis_r_group)
+    
+    ipdb.set_trace(context=10)
 
     frame = Display(solid1, run_display=True)
     frame.add_shape(solid2)
