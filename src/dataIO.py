@@ -1,6 +1,8 @@
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
 
-
-from OCC.STEPControl import STEPControl_Reader
+from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
+from OCC.Interface import Interface_Static_SetCVal
 from OCC.IFSelect import IFSelect_RetDone, IFSelect_ItemsByEntity
 import os
 import os.path
@@ -16,6 +18,7 @@ from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_S
                         GeomAbs_Hyperbola, GeomAbs_Parabola, GeomAbs_BezierCurve,\
                         GeomAbs_BSplineCurve, GeomAbs_OtherCurve
 from core_topology_traverse import Topo
+from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from OCC.Display.SimpleGui import init_display
 
 
@@ -38,8 +41,29 @@ def read_step_file(filename):
     return a_shape
 
 
+def write_step_file(shape, filename, step_ver="AP214"):
+    step_writer = STEPControl_Writer()
+    Interface_Static_SetCVal("write.step.schema", step_ver)
+    step_writer.Transfer(shape, STEPControl_AsIs)
+    status = step_writer.Write(filename)
+
+    assert(status == IFSelect_RetDone)
+
+
+# [ToDo] Fix callback unregisteration
+
+def solid_comp(solidList):
+    aRes = TopoDS_CompSolid()
+    builder = TopoDS_Builder()
+    builder.MakeCompSolid(aRes)
+    # transfer shapes and write file
+    for shp in solidList:
+        builder.Add(aRes, shp)
+    return aRes
+
+
 class Display():
-    def __init__(self, shp, run_display=False, *args, **kwargs):
+    def __init__(self, shp, run_display=True, *args, **kwargs):
         self.shape = shp
         self.shape_list = [shp]
         self.shape_selected = shp
@@ -103,10 +127,17 @@ class Display():
         elif self.selectMode == 'Edge':
             print(self.shape_selected)
             edge = BRepAdaptor_Curve(self.shape_selected)
-            if edge.GetType() == GeomAbs_Line:
+            curveType = edge.GetType()
+            if curveType == GeomAbs_Line:
                 gp_lin = edge.Line()
                 direction = gp_lin.Direction()
                 print('Line direction: (%.3f, %.3f, %.3f)' % (direction.X(), direction.Y(), direction.Z()))
+            elif curveType == GeomAbs_Circle:
+                gp_circ = edge.Circle()
+                center = gp_circ.Location()
+                print('Center of circle: (%.3f, %.3f, %.3f)' % (center.X(), center.Y(), center.Z()))
+                print('Radius of circle:', gp_circ.Radius())
+
             else:
                 typeList = ['Line', 'Circle', 'Ellipse', 'Parabola', 'BezierCurve', 'BSplineCurve', 'OffsetCurve or OtherCurve?', 'OtherCurve']
                 print('This edge type is not implemented !!')
