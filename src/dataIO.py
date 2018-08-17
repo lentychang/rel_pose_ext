@@ -50,8 +50,6 @@ def write_step_file(shape, filename, step_ver="AP214"):
     assert(status == IFSelect_RetDone)
 
 
-# [ToDo] Fix callback unregisteration
-
 def solid_comp(solidList):
     aRes = TopoDS_CompSolid()
     builder = TopoDS_Builder()
@@ -68,17 +66,16 @@ class Display():
         self.shape_list = [shp]
         self.shape_selected = shp
         self.selectMode = 'Edge'
+        self.callbackIsRegistered = False
         self.open(run_display=run_display)
-        
+
     def open(self, shape=None, run_display=True):
         # Todo: display shape from shape_list
+        self.callbackIsRegistered = False
         if run_display:
             if shape is not None:
                 self.shape = shape
             self.display, self.start_display, self.add_menu, self.add_function_to_menu = init_display()
-            self.display.register_select_callback(self.click_edge)
-            self.display.SetSelectionModeEdge()
-
             self.__show_all()
             self.add_menu('Selection Mode')
             self.add_menu('Show')
@@ -145,12 +142,15 @@ class Display():
 
     def edge_select_mode(self):
         print('Edge select mode activated')
-        if self.selectMode == 'Face':
+        if self.callbackIsRegistered is True and self.selectMode == 'Face':
             self.display.unregister_callback(self.click_face)
+            self.callbackIsRegistered = False
         self.selectMode = 'Edge'
+        if self.callbackIsRegistered is False:
+            self.display.register_select_callback(self.click_edge)
         self.display.SetSelectionModeEdge()
         self.__show_all()
-        self.display.register_select_callback(self.click_edge)
+        self.callbackIsRegistered = True
 
     def click_edge(self, edge_click, *kwargs):
         """ This is the function called every time
@@ -168,12 +168,15 @@ class Display():
 
     def face_select_mode(self):
         print('Face select mode activated')
-        if self.selectMode == 'Edge':
+        if self.callbackIsRegistered is True and self.selectMode == 'Edge':
             self.display.unregister_callback(self.click_edge)
+            self.callbackIsRegistered = False
         self.selectMode = 'Face'
+        if self.callbackIsRegistered is False:
+            self.display.register_select_callback(self.click_face)
         self.display.SetSelectionModeFace()
         self.__show_all()
-        self.display.register_select_callback(self.click_face)
+        self.callbackIsRegistered = True
 
     def click_face(self, face_click, *kwargs):
         """ This is the function called every time
