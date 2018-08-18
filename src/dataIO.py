@@ -116,7 +116,9 @@ class Display():
             elif surf.GetType() == GeomAbs_Cylinder:
                 gp_cyl = surf.Cylinder()
                 axis = gp_cyl.Axis().Direction()
-                print('cylinder axis: (%.3f, %.3f, %.3f)' % (axis.X(), axis.Y(), axis.Z()))
+                location = gp_cyl.Location()
+                print('cylinder axis direction: (%.3f, %.3f, %.3f)' % (axis.X(), axis.Y(), axis.Z()))
+                print('cylinder axis location: (%.3f, %.3f, %.3f)' % (location.X(), location.Y(), location.Z()))
             else:
                 typeList = ['Plane', 'Cylinder', 'Cone', 'Sphere', 'Torus', 'BezierSurface', 'BSplineSurface', 'SurfaceOfRevolution', 'SurfaceOfExtrusion', 'OffsetSurface', 'OtherSurface']
                 print('This surface type "%s" is not implemented !!' % typeList[surf.GetType()])
