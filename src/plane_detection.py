@@ -1,6 +1,6 @@
 
 
-from dataIO import read_step_file, Display
+from dataIO import read_step_file, Display, write_step_file, solid_comp
 from topo2 import RecognizeTopo
 import os.path
 import logging
@@ -9,7 +9,7 @@ import ipdb
 from OCC.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf, gp_Ax3, gp_Pln, gp_Vec
 from math import degrees, radians
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
-from OCC.TopLoc import TopLoc_Location    
+from OCC.TopLoc import TopLoc_Location
 from OCC.GProp import GProp_GProps
 from OCC.BRepGProp import brepgprop_VolumeProperties
 
@@ -48,7 +48,7 @@ def list2gpVec(ls):
 def mv2CMass(shp, pnt):
     # ipdb.set_trace()
     # ais_shp2 = frame.display.DisplayShape(shp2, update=True)
-    # the point want to be origin express in local  # the local Z axis expressed in local system expressed in global coordinates 
+    # the point want to be origin express in local  # the local Z axis expressed in local system expressed in global coordinates
 
     shp2Trsf = gp_Trsf()
     vec = gp_Vec(pnt, gp_Pnt(0, 0, 0))
@@ -79,6 +79,7 @@ def centerOfMass(solid):
 
 def find_closest_normal_pair(normal_add, normal_base=None, tolerance=0.5):
     """[summary]
+    # [ToDo] sort by angle difference
     Return the plane pairs with least difference of orientation of normal.
     If normal_base is not given, then take the default XY, YZ, ZX planes
 
@@ -133,7 +134,7 @@ if __name__ == '__main__':
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
                 'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp']
+                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[9]))
     shp_topo = RecognizeTopo(shapeFromModel)
     solid1 = shp_topo.solids[0]
@@ -143,18 +144,20 @@ if __name__ == '__main__':
     pnt2 = centerOfMass(solid2)
 
     normal_group1 = group_planes_by_axis(solid1)
-    normal_group2 = group_planes_by_axis(solid2)   
+    normal_group2 = group_planes_by_axis(solid2)
     ang_list = find_closest_normal_pair(normal_group2, normal_base=normal_group1)
 
     frame = Display(solid1, run_display=True)
     frame.add_shape(solid2)
+    frame.open()
     # Get rotation axis
     # [ToDo] the angle value related to rotation direction is not define clearly
     # [ToDo] adapt a, b with the vector got from ang_list
     # [ToDo] Add condition: if after rotation the angle between two axis is bigger then reverse one axis
     # [ToDo] use While loop to rotate until angle smaller than given angle tolerance
-    a = list2gpVec([0., 1., 0.])
-    b = list2gpVec([0.146, 0.985, -0.088])
+
+    a = list2gpVec([float(i) for i in ang_list['minPair'][0][0].split(',')])
+    b = list2gpVec([float(i) for i in ang_list['minPair'][0][1].split(',')])
     c = a.Crossed(b)
     rev_ax = gp_Dir(c)
     ax1 = gp_Ax1(pnt2, rev_ax)
@@ -164,6 +167,8 @@ if __name__ == '__main__':
     shp2Trsf.SetTransformation(ax3)
     shp2Toploc = TopLoc_Location(shp2Trsf)
     solid2.Move(shp2Toploc)
+
+    ipdb.set_trace(context=10)
 
     # Plane distance detection
     # [ToDo] a better algorithm to choose the correct plane is needed
@@ -188,8 +193,8 @@ if __name__ == '__main__':
     # [ToDo] vector direction need to be determined...
     # [ToDo] while loop to move until distance smaller than given distance tolerance
     ax3 = gp_Ax3()
-    shp2Trsf = gp_Trsf()    
-    dirList = [float(i) for i in ang_list['minPair'][0][0].split(',')]    
+    shp2Trsf = gp_Trsf()
+    dirList = [float(i) for i in ang_list['minPair'][0][0].split(',')]
     mvVec = gp_Vec(dirList[0], dirList[1], dirList[2]).Normalized().Multiplied(-1.0 * min_dist)
     shp2Trsf.SetTranslation(mvVec)
     shp2Toploc = TopLoc_Location(shp2Trsf)
@@ -222,8 +227,8 @@ if __name__ == '__main__':
     mv2CMass(solid2, pnt2.Mirrored(gp_Pnt(0,0,0)))
     '''
     ipdb.set_trace(context=10)
+    temp = solid_comp([solid1, solid2])
+    write_step_file(solid_comp([solid1, solid2]), 'lf064-0102_1.stp')
     frame.open()
 
     ipdb.set_trace(context=10)
-
-
