@@ -6,13 +6,92 @@ from topo2 import RecognizeTopo
 import os.path
 import logging
 from OCC.BRepAdaptor import BRepAdaptor_Surface
+from OCC.GeomAbs import GeomAbs_Cylinder
 import ipdb
-from math import radians
+from math import radians, degrees
 from core_topology_traverse import Topo
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.gp import gp_Pnt, gp_Vec
 from OCC.gp import gp_Trsf
 from OCC.TopLoc import TopLoc_Location
+
+
+class Hole():
+    def __init__(self, topods_shp, proj_pln=None):
+        self.shp = topods_shp
+        adaptor = BRepAdaptor_Surface(self.shp)
+        if adaptor.GetType() == GeomAbs_Cylinder:
+            self.cyl = adaptor.Cylinder()
+            self.axis = self.cyl.Axis()
+            self.direction = self.axis.Direction()
+            self.location = self.cyl.Location()
+            self.localCoor = self.cyl.Position()
+            self.neighborIsSet = False 
+        else:
+            logging.warning('Wrong shape type, input should be cylinder')
+        if proj_pln is not None:
+            self.setProjPln(proj_pln)
+
+    def setProjPln(self, gp_pln):
+        self.projPln = gp_pln
+        self.projLocation = ais_ProjectPointOnPlane(self.location, self.projPln)
+
+    def setNeighborHoles(self, listOfHoles):
+        localListofHoles = listOfHoles.copy()
+        if self in listOfHoles:
+            localListofHoles.remove(self)
+        self.neighbors = localListofHoles
+        self.neighborIsSet = True
+        self.neighbor_feature = self.__get_neighbor_feature()
+
+    def __get_neighbor_feature(self):
+        neighborsFeatureList = []
+        for neighborHole in self.neighbors:
+            v1 = gp_Vec(self.projLocation, neighborHole.projLocation)
+            r1 = v1.Magnitude()
+            # th1 = v1.AngleWithRef(self.projPln.Position().XDirection(), self.projPln.Axis())
+            if r1 != 0.0:
+                th1 = degrees(v1.AngleWithRef(gp_Vec(self.projPln.XAxis().Direction()), gp_Vec(self.projPln.Axis().Direction())))
+                neighborsFeatureList.append({'Hole': neighborHole, 'Magnitude': r1, 'angle': th1})
+            else:
+                neighborsFeatureList.append({'Hole': neighborHole, 'Magnitude': r1, 'angle': 0.0})
+        return neighborsFeatureList
+
+    def get_common_neighnor_candidate(self, ahole, tol=1e-2):
+        newListA = []
+        newListB = []
+        for neighborA in self.neighbor_feature:
+            r1 = neighborA['Magnitude']
+            for neighborB in ahole.neighbor_feature:
+                r2 = neighborB['Magnitude']
+                if abs(r2 - r1) < tol:
+                    if neighborA not in newListA:
+                        newListA.append(neighborA)
+                    if neighborB not in newListB:
+                        newListB.append(neighborB)
+        diffListA = []
+        diffListB = []
+        for i in range(0, len(newListA)):
+            for j in range(i + 1, len(newListA)):
+                deltR = round(newListA[i]['Magnitude'] - newListA[j]['Magnitude'], 3)
+                deltTh = round(newListA[i]['angle'] - newListA[j]['angle'], 1)
+                innerPair = [i, j]
+                diffListA.append({'innerPair': innerPair, 'dR': deltR, 'dTh': deltTh})
+
+        for i in range(0, len(newListB)):
+            for j in range(i + 1, len(newListB)):
+                deltR = round(newListB[i]['Magnitude'] - newListB[j]['Magnitude'], 3)
+                deltTh = round(newListB[i]['angle'] - newListB[j]['angle'], 1)
+                innerPair = [i, j]
+                diffListB.append({'innerPair': innerPair, 'dR': deltR, 'dTh': deltTh})
+
+        print(diffListA)
+        print(diffListB)
+
+
+
+
+
 
 
 def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
@@ -179,8 +258,7 @@ def get_neighbor_vector(hole_cyl, cylList, projPln):
     for cyl in cylList:
         pnt_cyl = BRepAdaptor_Surface(cyl, True).Cylinder().Location()
         pnt_end = ais_ProjectPointOnPlane(pnt_cyl, projPln)
-        # vecList.append(gp_Vec(pnt_start, pnt_end))
-        vecList.append(gp_Vec(pnt_hole, pnt_cyl))
+        vecList.append(gp_Vec(pnt_start, pnt_end))
     return vecList
 
 
@@ -193,7 +271,7 @@ if __name__ == '__main__':
                 'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
                 'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match_3.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[12]))
-    ipdb.set_trace(context=10)
+    # ipdb.set_trace(context=10)
     shp_topo = RecognizeTopo(shapeFromModel)
 
     solid1 = shp_topo.solids[0]
@@ -223,6 +301,30 @@ if __name__ == '__main__':
 
     sel_list1 = select_cyl_by_axisDir(full_cylinder_group1, normal)
     sel_list2 = select_cyl_by_axisDir(full_cylinder_group2, normal, ang_tol=0.5)
+    ipdb.set_trace(context=10)
+
+    holeList1 = []
+    for i in sel_list1:
+        aHole = Hole(i)
+        aHole.setProjPln(projPln)
+        holeList1.append(aHole)
+    for aHole in holeList1:
+        aHole.setNeighborHoles(holeList1)
+
+    holeList2 = []
+    for i in sel_list2:
+        aHole = Hole(i)
+        aHole.setProjPln(projPln)
+        holeList2.append(aHole)
+    for aHole in holeList2:
+        aHole.setNeighborHoles(holeList2)
+
+    hole1 = holeList1[2]
+    hole2 = holeList2[1]
+    ipdb.set_trace(context=10)
+    hole1.get_common_neighnor_candidate(hole2)
+
+
 
     abc = get_neighbor_vector(sel_list1[0], sel_list1, projPln=projPln)
     abcList = {}
@@ -246,8 +348,25 @@ if __name__ == '__main__':
     for i in abcList.keys():
         if i in defgList:
             commonKeys.append(i)
+    ipdb.set_trace(context=10)
+    commonVecAngleList = []
+    for i in commonKeys:
+        for j in abcList[i]:
+            for k in defgList[i]:
+                if j.Magnitude() != 0 and k.Magnitude != 0:
+                    commonVecAngleList.append(degrees(j.Angle(k)))
 
-    
+
+    for i in range(0, len(commonKeys)):
+        
+        for j in abcList[commonKeys[i]]:
+
+
+            for k in defgList[i]:
+                if j.Magnitude() != 0 and k.Magnitude != 0:
+                    commonVecAngleList.append(degrees(j.Angle(k)))
+
+
     ipdb.set_trace(context=10)
     '''
     # match single hole
