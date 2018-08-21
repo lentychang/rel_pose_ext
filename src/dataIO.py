@@ -22,6 +22,15 @@ from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from OCC.Display.SimpleGui import init_display
 
 
+def extractDictByVal(dictionary, valueList):
+    # copy a new dictionary to prevent destroy the original one
+    new_dict = dict(dictionary)
+    for key, val in dictionary.items():
+        if val not in valueList:
+            del new_dict[key]
+    return new_dict
+
+
 def read_step_file(filename):
     """ read the STEP file and returns a compound
     """
