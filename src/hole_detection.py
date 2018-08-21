@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
-from dataIO import read_step_file, Display
+from dataIO import read_step_file, Display, extractDictByVal
 from topo2 import RecognizeTopo
 import os.path
 import logging
@@ -36,65 +36,32 @@ class Hole():
         self.projPln = gp_pln
         self.projLocation = ais_ProjectPointOnPlane(self.location, self.projPln)
 
-    def setNeighborHoles(self, listOfHoles):
-        localListofHoles = listOfHoles.copy()
-        if self in listOfHoles:
-            localListofHoles.remove(self)
-        self.neighbors = localListofHoles
-        self.neighborIsSet = True
-        self.neighbor_feature = self.__get_neighbor_feature()
 
-    def __get_neighbor_feature(self):
-        neighborsFeatureList = []
-        for neighborHole in self.neighbors:
-            v1 = gp_Vec(self.projLocation, neighborHole.projLocation)
-            r1 = v1.Magnitude()
-            # th1 = v1.AngleWithRef(self.projPln.Position().XDirection(), self.projPln.Axis())
-            if r1 != 0.0:
-                th1 = degrees(v1.AngleWithRef(gp_Vec(self.projPln.XAxis().Direction()), gp_Vec(self.projPln.Axis().Direction())))
-                neighborsFeatureList.append({'Hole': neighborHole, 'Magnitude': r1, 'angle': th1})
-            else:
-                neighborsFeatureList.append({'Hole': neighborHole, 'Magnitude': r1, 'angle': 0.0})
-        return neighborsFeatureList
-
-    def get_common_neighnor_candidate(self, ahole, tol=1e-2):
-        newListA = []
-        newListB = []
-        for neighborA in self.neighbor_feature:
-            r1 = neighborA['Magnitude']
-            for neighborB in ahole.neighbor_feature:
-                r2 = neighborB['Magnitude']
-                if abs(r2 - r1) < tol:
-                    if neighborA not in newListA:
-                        newListA.append(neighborA)
-                    if neighborB not in newListB:
-                        newListB.append(neighborB)
-        diffListA = []
-        diffListB = []
-        for i in range(0, len(newListA)):
-            for j in range(i + 1, len(newListA)):
-                deltR = round(newListA[i]['Magnitude'] - newListA[j]['Magnitude'], 3)
-                deltTh = round(newListA[i]['angle'] - newListA[j]['angle'], 1)
-                innerPair = [i, j]
-                diffListA.append({'innerPair': innerPair, 'dR': deltR, 'dTh': deltTh})
-
-        for i in range(0, len(newListB)):
-            for j in range(i + 1, len(newListB)):
-                deltR = round(newListB[i]['Magnitude'] - newListB[j]['Magnitude'], 3)
-                deltTh = round(newListB[i]['angle'] - newListB[j]['angle'], 1)
-                innerPair = [i, j]
-                diffListB.append({'innerPair': innerPair, 'dR': deltR, 'dTh': deltTh})
-
-        print(diffListA)
-        print(diffListB)
+def create_holeList(topds_shp_list, proj_pln=None):
+    holeList = []
+    for i in topds_shp_list:
+        aHole = Hole(i)
+        if proj_pln is not None:
+            aHole.setProjPln(projPln)
+        holeList.append(aHole)
+    return holeList
 
 
+def getNeighborRelTable(holeList, projPlane, roundingDigit_dist=2, roundingDigit_ang=1):
+    distTable = {}
+    angTable = {}
+    for holeA in holeList:
+        for holeB in holeList:
+            if holeA == holeB:
+                continue
+            vec2neighbor = gp_Vec(holeA.projLocation, holeB.projLocation)
+            # [ToDo] change the type of key of distTable into set{} which negelet order
+            distTable[(holeA, holeB)] = round(vec2neighbor.Magnitude(), roundingDigit_dist)
+            angTable[(holeA, holeB)] = round(degrees(vec2neighbor.AngleWithRef(gp_Vec(projPlane.XAxis().Direction()), gp_Vec(projPlane.Axis().Direction()))), roundingDigit_ang)
+    return {'distTable': distTable, 'angTable': angTable}
 
 
-
-
-
-def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
+def __group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
     """According to cylinders' axis, categorize a list of cylinders into a dictionary by using its axis as a key.
 
     Arguments:
@@ -105,7 +72,7 @@ def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
     Returns:
         {'string': [TopoDS_Face,...]} -- returns a dictionary, key is string of axis and location vector, value is list of TopoDS_Shape
     """
-    logging.debug('Entering group_coaxial')   
+    logging.debug('Entering group_coaxial')
     tol_rad = radians(tol_ang)
     skipList = []
     cyl_ax_grp = {}
@@ -122,12 +89,12 @@ def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
                                                           location1.X(),
                                                           location1.Y(),
                                                           location1.Z())
-        
+
         if key not in cyl_ax_grp:
             cyl_ax_grp[key] = [cylinders[i]]
         else:
             logging.warning('Error !!! Please check the logic again !')
-        
+
         for j in range(i + 1, len(cylinders)):
             logging.debug('i = %d, j = %d' % (i, j))
 
@@ -135,7 +102,7 @@ def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
                 logging.debug('skip !!')
                 continue
             cyl2 = BRepAdaptor_Surface(cylinders[j]).Cylinder()
-            axis2 = cyl2.Axis()            
+            axis2 = cyl2.Axis()
             if axis1.IsCoaxial(axis2, tol_rad, tol_lin):
                 logging.debug('Coaxial !!')
                 cyl_ax_grp[key].append(cylinders[j])
@@ -143,10 +110,10 @@ def group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1):
     return cyl_ax_grp
 
 
-def cylinder_group_radius(cyl_ax_grp, tol=0.1):
+def __cylinder_group_radius(cyl_ax_grp, tol=0.1):
     logging.debug('Entering group_radius')
 
-    keyList = list(cyl_ax_grp.keys())  
+    keyList = list(cyl_ax_grp.keys())
     cyl_rad_grp = {}
     for k in keyList:
         cylinders = cyl_ax_grp[k]
@@ -176,7 +143,10 @@ def cylinder_group_radius(cyl_ax_grp, tol=0.1):
     return cyl_rad_grp
 
 
-def find_full_cylinder(cylinder_group):
+def find_full_cylinder(cylinders):
+    coaxial_cylinders = __group_coaxial_cylinders(cylinders)
+    cylinder_group = __cylinder_group_radius(coaxial_cylinders)
+
     keys = list(cylinder_group.keys())
     full_cyl_list = {}
     for key in keys:
@@ -202,7 +172,6 @@ def find_full_cylinder(cylinder_group):
 
 
 def cylinder_pnt2pln(cyl, pln):
- 
     ais_ProjectPointOnPlane(cyl.Location(), pln)
 
 
@@ -262,6 +231,143 @@ def get_neighbor_vector(hole_cyl, cylList, projPln):
     return vecList
 
 
+def find_n_max(inputList):
+    ls = list(inputList)
+    ls.sort()
+    n = len(ls)
+    for i in range(max(ls), 0, -1):
+        print(i)
+        if i in ls:
+            val = n - ls.index(i)
+            if val >= i + 1:
+                maxPossibleVal = i
+                break
+        else:
+            # if in not in ls, then use val computed from previous computation
+            if val >= i + 1:
+                maxPossibleVal = i
+                break
+    n_max = maxPossibleVal + 1
+    return n_max
+
+
+def get_holes_pairs(list1, list2, projPlane):
+    holeList1 = create_holeList(list1, projPlane)
+    holeList2 = create_holeList(list2, projPlane)
+
+    # tolerance should be considered
+    relTable1 = getNeighborRelTable(holeList1, projPlane)
+    distTable1 = relTable1['distTable'] 
+    angTable1 = relTable1['angTable']
+    relTable2 = getNeighborRelTable(holeList2, projPlane)
+    distTable2 = relTable2['distTable'] 
+    angTable2 = relTable2['angTable']
+
+    # intersection, get the common distance
+    dist_set1 = set(list(distTable1.values()))
+    dist_set2 = set(list(distTable2.values()))
+    commonDist = dist_set1.intersection(dist_set2)
+
+    # table with common distance
+    commonDistTable1 = extractDictByVal(distTable1, commonDist)
+    commonDistTable2 = extractDictByVal(distTable2, commonDist)
+
+    # turn keys into set type inorder to count number of each point/hole
+    holePairs1 = list(commonDistTable1.keys())
+    holePairsConcat1 = [i for t in holePairs1 for i in t]
+    holeSet1 = set(holePairsConcat1)
+    holePairs2 = list(commonDistTable2.keys())
+    holePairsConcat2 = [i for t in holePairs2 for i in t]
+    holeSet2 = set(holePairsConcat2)
+    holeCountList1, holeCountList2 = [], []
+    for i in holeSet1:
+        holeCountList1.append(holePairsConcat1.count(i))
+    for i in holeSet2:
+        holeCountList2.append(holePairsConcat2.count(i))
+
+    # find minimal possible maximal n
+    nMax = min(find_n_max(holeCountList2), find_n_max(holeCountList2))
+    # [Attention, if distTable's key change into set type, threshold shoulb be (n-1)]
+    threshold = 2 * (nMax - 1)
+    # if connection number of the point is smaller than threshold, delete it.
+    # [Attention] algoritm works only 80% cases. sometimes solution N is much smaller than N_max
+    # please see list_gen.py
+    rmHoles1, rmHoles2 = [], []
+    newHolePairs1, newHolePairs2 = holePairs1, holePairs2
+    for i in holeSet1:
+        if holePairsConcat1.count(i) < threshold:
+            rmHoles1.append(i)  
+    for i in holeSet2:
+        if holePairsConcat2.count(i) < threshold:
+            rmHoles2.append(i)
+    if len(rmHoles1) != 0:
+        newHolePairs1 = [i for i in holePairs1 for k in rmHoles1 if k not in i]
+    if len(rmHoles2) != 0:
+        newHolePairs2 = [i for i in holePairs2 for k in rmHoles2 if k in i]
+
+    # get holes
+    newHoleSet12 = set([k for i in newHolePairs1 for k in i])
+    newHoleSet21 = set([k for i in newHolePairs2 for k in i])
+
+    # grouping hole pairs by first hole
+    groupHole1 = {}
+    for aHole in newHoleSet12:
+        selectedHolePairs = [i for i in newHolePairs1 if i[0] == aHole]
+        groupHole1[aHole] = selectedHolePairs
+
+    # create feature table
+    featureTable1 = {}
+    for aHole in newHoleSet12:
+        # extract [r, th] table
+        valList = []
+        for holePair in groupHole1[aHole]:
+            r = commonDistTable1[holePair]
+            th = angTable1[holePair]
+            neighborHole = list(holePair)
+            neighborHole = neighborHole[1]
+            valList.append([r, th])
+        # compute gradient table for [r, th]
+        dValList = []
+        for i in range(0, len(valList)):
+            for j in range(i + 1, len(valList)):
+                dR = valList[i][0] - valList[j][0]
+                dTh = valList[i][1] - valList[j][1]
+                # rounding is done when create distTable, but some lower digit don't know why appear
+                dValList.append((round(dR, 2), round(dTh, 1)))
+        featureTable1[aHole] = dValList
+
+    groupHole2 = {}
+    for aHole in newHoleSet21:
+        selectedHolePairs = [i for i in newHolePairs2 if i[0] == aHole]
+        groupHole2[aHole] = selectedHolePairs
+
+    featureTable2 = {}
+    for aHole in newHoleSet21:
+        valList = []
+        for holePair in groupHole2[aHole]:
+            r = commonDistTable2[holePair]
+            th = angTable2[holePair]
+            neighborHole = list(holePair)
+            neighborHole = neighborHole[1]
+            valList.append([r, th])
+        dValList = []
+        for i in range(0, len(valList)):
+            for j in range(i + 1, len(valList)):
+                dR = valList[i][0] - valList[j][0]
+                dTh = valList[i][1] - valList[j][1]
+                dValList.append((round(dR, 2), round(dTh, 1)))
+        featureTable2[aHole] = dValList
+
+    holeMatchingPair = []
+    for i in featureTable1.keys():
+        for j in featureTable2.keys():
+            m = set(featureTable1[i])
+            n = set(featureTable2[j])
+            if m == n:
+                holeMatchingPair.append([i, j])
+    return holeMatchingPair
+
+
 if __name__ == '__main__':
     logging.basicConfig(filename="logging.txt", filemode='w',
                         level=logging.warning)
@@ -284,16 +390,10 @@ if __name__ == '__main__':
     cylinders1 = RecognizeTopo(solid1).cylinders()
     cylinders2 = RecognizeTopo(solid2).cylinders()
 
-    coaxial_cylinders1 = group_coaxial_cylinders(cylinders1)
-    cylinder_axis_r_group1 = cylinder_group_radius(coaxial_cylinders1)
-    full_cylinder_group1 = find_full_cylinder(cylinder_axis_r_group1)
-
-    coaxial_cylinders2 = group_coaxial_cylinders(cylinders2)
-    cylinder_axis_r_group2 = cylinder_group_radius(coaxial_cylinders2)
-    full_cylinder_group2 = find_full_cylinder(cylinder_axis_r_group2)
+    full_cylinder_group1 = find_full_cylinder(cylinders1)
+    full_cylinder_group2 = find_full_cylinder(cylinders2)
     # find cylinders with axis perpendicular to plane or select cylinder by axis direction?
     # find coaxial between solid1 and solid2
-
     
     # match single hole
     projPln = BRepAdaptor_Surface(RecognizeTopo(solid1).planes()[5], True).Plane()
@@ -303,71 +403,9 @@ if __name__ == '__main__':
     sel_list2 = select_cyl_by_axisDir(full_cylinder_group2, normal, ang_tol=0.5)
     ipdb.set_trace(context=10)
 
-    holeList1 = []
-    for i in sel_list1:
-        aHole = Hole(i)
-        aHole.setProjPln(projPln)
-        holeList1.append(aHole)
-    for aHole in holeList1:
-        aHole.setNeighborHoles(holeList1)
-
-    holeList2 = []
-    for i in sel_list2:
-        aHole = Hole(i)
-        aHole.setProjPln(projPln)
-        holeList2.append(aHole)
-    for aHole in holeList2:
-        aHole.setNeighborHoles(holeList2)
-
-    hole1 = holeList1[2]
-    hole2 = holeList2[1]
-    ipdb.set_trace(context=10)
-    hole1.get_common_neighnor_candidate(hole2)
+    get_holes_pairs(sel_list1, sel_list2, projPln)
 
 
-
-    abc = get_neighbor_vector(sel_list1[0], sel_list1, projPln=projPln)
-    abcList = {}
-    for i in abc:
-        print('Vec:(%.6f, %.6f, %.6f), Magnitude: %.6f' % (i.X(), i.Y(), i.Z(), round(i.Magnitude(), 4)))
-        if i.Magnitude() in abcList:
-            abcList[round(i.Magnitude(), 4)].append(i)
-        else:
-            abcList[round(i.Magnitude(), 4)] = [i]
-
-    defg = get_neighbor_vector(sel_list2[0], sel_list2, projPln=projPln)
-    defgList = {}
-    for i in defg:
-        print('Vec:(%.6f, %.6f, %.6f), Magnitude: %.6f' % (i.X(), i.Y(), i.Z(), round(i.Magnitude(), 4)))
-        if i.Magnitude() in defgList:
-            defgList[round(i.Magnitude(), 4)].append(i)
-        else:
-            defgList[round(i.Magnitude(), 4)] = [i]
-
-    commonKeys = []
-    for i in abcList.keys():
-        if i in defgList:
-            commonKeys.append(i)
-    ipdb.set_trace(context=10)
-    commonVecAngleList = []
-    for i in commonKeys:
-        for j in abcList[i]:
-            for k in defgList[i]:
-                if j.Magnitude() != 0 and k.Magnitude != 0:
-                    commonVecAngleList.append(degrees(j.Angle(k)))
-
-
-    for i in range(0, len(commonKeys)):
-        
-        for j in abcList[commonKeys[i]]:
-
-
-            for k in defgList[i]:
-                if j.Magnitude() != 0 and k.Magnitude != 0:
-                    commonVecAngleList.append(degrees(j.Angle(k)))
-
-
-    ipdb.set_trace(context=10)
     '''
     # match single hole
     filterList1 = filter_cylinder_by_position(sel_list1, projPln)
@@ -378,13 +416,6 @@ if __name__ == '__main__':
     trsf.SetTranslation(mvVec)
     solid2.Move(TopLoc_Location(trsf))
     '''
-    # get cylinders with given axis for solid1 and solid2
-    # project them all to plane
-    # find the closest pair
-    # if radius is close then ok
-
-    # for more holes matching
-    # align first nearest hole by translation and the match second nearest hole by rotation around first holes
 
     ipdb.set_trace(context=10)
 
