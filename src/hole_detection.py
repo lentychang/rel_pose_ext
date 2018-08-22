@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
+import numpy as np
 from dataIO import read_step_file, Display, extractDictByVal
 from topo2 import RecognizeTopo
 import os.path
@@ -11,7 +12,7 @@ import ipdb
 from math import radians, degrees
 from core_topology_traverse import Topo
 from OCC.AIS import ais_ProjectPointOnPlane
-from OCC.gp import gp_Pnt, gp_Vec
+from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat
 from OCC.gp import gp_Trsf
 from OCC.TopLoc import TopLoc_Location
 
@@ -26,7 +27,7 @@ class Hole():
             self.direction = self.axis.Direction()
             self.location = self.cyl.Location()
             self.localCoor = self.cyl.Position()
-            self.neighborIsSet = False 
+            self.neighborIsSet = False
         else:
             logging.warning('Wrong shape type, input should be cylinder')
         if proj_pln is not None:
@@ -257,10 +258,10 @@ def get_holes_pairs(list1, list2, projPlane):
 
     # tolerance should be considered
     relTable1 = getNeighborRelTable(holeList1, projPlane)
-    distTable1 = relTable1['distTable'] 
+    distTable1 = relTable1['distTable']
     angTable1 = relTable1['angTable']
     relTable2 = getNeighborRelTable(holeList2, projPlane)
-    distTable2 = relTable2['distTable'] 
+    distTable2 = relTable2['distTable']
     angTable2 = relTable2['angTable']
 
     # intersection, get the common distance
@@ -296,7 +297,7 @@ def get_holes_pairs(list1, list2, projPlane):
     newHolePairs1, newHolePairs2 = holePairs1, holePairs2
     for i in holeSet1:
         if holePairsConcat1.count(i) < threshold:
-            rmHoles1.append(i)  
+            rmHoles1.append(i)
     for i in holeSet2:
         if holePairsConcat2.count(i) < threshold:
             rmHoles2.append(i)
@@ -368,6 +369,22 @@ def get_holes_pairs(list1, list2, projPlane):
     return holeMatchingPair
 
 
+def centerOfMass_pnts(pnts):
+    xSum, ySum, zSum = 0, 0, 0
+    for pnt in pnts:
+        xSum += pnt.X()
+        ySum += pnt.Y()
+        zSum += pnt.Z()
+        print('%.2f, %.2f, %.2f' % (pnt.X(), pnt.Y(), pnt.Z()))
+    n = len(pnts)
+    centerOfMass = gp_Pnt(xSum / n, ySum / n, zSum / n)
+    return centerOfMass
+
+
+def gpVec2npMat(gpVec):
+    return np.matrix([[gpVec.X()], [gpVec.Y()], [gpVec.Z()]])
+
+
 if __name__ == '__main__':
     logging.basicConfig(filename="logging.txt", filemode='w',
                         level=logging.warning)
@@ -394,18 +411,80 @@ if __name__ == '__main__':
     full_cylinder_group2 = find_full_cylinder(cylinders2)
     # find cylinders with axis perpendicular to plane or select cylinder by axis direction?
     # find coaxial between solid1 and solid2
-    
+
     # match single hole
     projPln = BRepAdaptor_Surface(RecognizeTopo(solid1).planes()[5], True).Plane()
     normal = projPln.Axis().Direction()
 
     sel_list1 = select_cyl_by_axisDir(full_cylinder_group1, normal)
     sel_list2 = select_cyl_by_axisDir(full_cylinder_group2, normal, ang_tol=0.5)
+
+    matched_hole_pairs = get_holes_pairs(sel_list1, sel_list2, projPln)
+
+    pntsA = [i[0].projLocation for i in matched_hole_pairs]
+    pntsB = [i[1].projLocation for i in matched_hole_pairs]
+
+    cenA = centerOfMass_pnts(pntsA)
+    cenB = centerOfMass_pnts(pntsB)
+
+    shp2Trsf = gp_Trsf()
+    mvVecA2O = gp_Vec(cenA, gp_Pnt(0, 0, 0))
+    mvVecB2O = gp_Vec(cenB, gp_Pnt(0, 0, 0))
+
+    newPntsA = [i.Translated(mvVecA2O) for i in pntsA]
+    newPntsB = [i.Translated(mvVecB2O) for i in pntsB]
+
+    npMatA = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsA]
+    npMatB = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsB]
+    varMat = np.asmatrix(np.zeros((3, 3)))
+    for i in range(0, len(npMatA)):
+        varMat += npMatB[i] * npMatA[i].transpose()
+
+    # shp2Trsf.SetTranslation(mvVec)
+    # shp2Toploc = TopLoc_Location(shp2Trsf)
+    # solid2.Move(shp2Toploc)
+
+    linAlg = np.linalg
+    U, s, Vh = linAlg.svd(varMat, full_matrices=True)
     ipdb.set_trace(context=10)
+    R = Vh.transpose() * U.transpose()
+    # [ToDo] Don't know why second column should multiply -1
+    reverseMat = np.matrix([(1, 0, 0),
+                            (0, 1, 0),
+                            (0, 0, -1)])
 
-    get_holes_pairs(sel_list1, sel_list2, projPln)
+    # if R has determinant -1, then R is a rotation plus a reflection
+    if linAlg.det(R) < 0:
+        # R = reverseMat * R
+        R = (reverseMat * Vh).transpose() * U.transpose()
+    t = - R * gpVec2npMat(mvVecB2O) + gpVec2npMat(mvVecA2O)
 
+    # q = quaternion_from_matrix(R)
+    R = np.array(R)
+    RgpMat = gp_Mat(R[0][0], R[0][1], R[0][2],
+                    R[1][0], R[1][1], R[1][2],
+                    R[2][0], R[2][1], R[2][2])
+    q = gp_Quaternion(RgpMat)
 
+    trsf = gp_Trsf()
+    trsf.SetTranslation(mvVecB2O)
+    toploc = TopLoc_Location(trsf)
+    ipdb.set_trace(context=10)
+    solid2.Move(toploc)
+
+    trsf = gp_Trsf()
+    trsf.SetRotation(q)
+    toploc = TopLoc_Location(trsf)
+    ipdb.set_trace(context=10)
+    solid2.Move(toploc)
+
+    trsf = gp_Trsf()
+    trsf.SetTranslation(mvVecA2O.Reversed())
+    toploc = TopLoc_Location(trsf)
+    ipdb.set_trace(context=10)
+    solid2.Move(toploc)
+
+    frame.open()
     '''
     # match single hole
     filterList1 = filter_cylinder_by_position(sel_list1, projPln)
@@ -418,5 +497,3 @@ if __name__ == '__main__':
     '''
 
     ipdb.set_trace(context=10)
-
-
