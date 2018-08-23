@@ -1,19 +1,21 @@
 
 
-from dataIO import read_step_file, Display, write_step_file, solid_comp
-from topo2 import RecognizeTopo
-import os.path
 import logging
-from OCC.BRepAdaptor import BRepAdaptor_Surface
-import ipdb
-from OCC.gp import gp_Ax1, gp_Pnt, gp_Dir, gp_Trsf, gp_Ax3, gp_Pln, gp_Vec
+import os.path
 from math import degrees, radians
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
-from OCC.TopLoc import TopLoc_Location
-from OCC.GProp import GProp_GProps
-from OCC.BRepGProp import brepgprop_VolumeProperties
-from OCC.AIS import ais_ProjectPointOnPlane
+
+import ipdb
 import numpy as np
+from OCC.AIS import ais_ProjectPointOnPlane
+from OCC.BRepAdaptor import BRepAdaptor_Surface
+from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+from OCC.BRepGProp import brepgprop_VolumeProperties
+from OCC.gp import gp_Ax1, gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
+from OCC.GProp import GProp_GProps
+from OCC.TopLoc import TopLoc_Location
+
+from dataIO import Display, read_step_file, solid_comp, write_step_file
+from topo2 import RecognizeTopo
 
 
 def group_planes_by_axis(shape):
@@ -74,7 +76,7 @@ def centerOfMass(solid):
     return prop.CentreOfMass()
 
 
-def find_closest_normal_pair(solid_add, solid_base=None, ang_tol=0.5):
+def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=False, ang_tol=0.5):
     """[summary]
     # [ToDo] sort by angle difference
     Return the direction pairs with least difference of orientation of normal.
@@ -105,7 +107,9 @@ def find_closest_normal_pair(solid_add, solid_base=None, ang_tol=0.5):
                                   (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
     normals_base = normal_base_withPlanes.keys()
     normals_add = normal_add_withPlanes.keys()
-    minPair = {'minVal': 90.0}
+    minPair = {'minVal': 90.0,
+               'minGpDirPair': [],
+               'minAxisKeyPair': []}
 
     for normal_base in normals_base:
         dir_base = gp_Dir(normal_base[0], normal_base[1], normal_base[2])
@@ -114,6 +118,10 @@ def find_closest_normal_pair(solid_add, solid_base=None, ang_tol=0.5):
             ang = degrees(dir_base.Angle(dir_add))
             complementary_angle = 180.0 - ang
             min_ang = min(ang, complementary_angle)
+            if negelet_parallelPair and min_ang <= ang_tol / 10:
+                print('neglet parallel planes')
+                continue
+
             if abs(min_ang - minPair['minVal']) <= ang_tol:
                 minPair['minGpDirPair'].append([dir_base, dir_add])
                 minPair['minAxisKeyPair'].append([normal_base, normal_add])
@@ -185,28 +193,9 @@ def align_closest_planes(shp, mvVec):
     shp.Move(shp2Toploc)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(filename="logging.txt", filemode='w',
-                        level=logging.warning)
-    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
-                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
-                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
-                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp']
-    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[9]))
-    shp_topo = RecognizeTopo(shapeFromModel)
-    solid1 = shp_topo.solids[0]
-    solid2 = shp_topo.solids[1]
-
-    pnt1 = centerOfMass(solid1)
-    pnt2 = centerOfMass(solid2)
-
-    frame = Display(solid1, run_display=True)
-    frame.add_shape(solid2)
-    frame.open()
-    ipdb.set_trace(context=10)
+def autoPlaneAlign(solid_base, solid_add, negletParallelPln=False):
     # find normal of closest plane pairs
-    ang_list = find_closest_normal_pair(solid_add=solid2, solid_base=solid1)
+    ang_list = find_closest_normal_pair(solid_add=solid2, solid_base=solid1, negelet_parallelPair=negletParallelPln)
 
     # Get rotation axis
     # [ToDo] the angle value related to rotation direction is not define clearly
@@ -227,8 +216,33 @@ if __name__ == '__main__':
     # [ToDo] while loop to move until distance smaller than given distance tolerance
     align_closest_planes(solid2, minDistPair['mvVec'])
 
-    # temp = solid_comp([solid1, solid2])
-    # write_step_file(solid_comp([solid1, solid2]), 'lf064-0102_1.stp')
+
+if __name__ == '__main__':
+    logging.basicConfig(filename="logging.txt", filemode='w',
+                        level=logging.warning)
+    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
+                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
+                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
+                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
+                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp', 'holes_match_tilt.stp']
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[13]))
+    shp_topo = RecognizeTopo(shapeFromModel)
+    solid1 = shp_topo.solids[0]
+    solid2 = shp_topo.solids[1]
+
+    pnt1 = centerOfMass(solid1)
+    pnt2 = centerOfMass(solid2)
+
+    frame = Display(solid1, run_display=True)
+    frame.add_shape(solid2)
+    frame.open()
+    ipdb.set_trace(context=10)
+
+    autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
+    autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
+
+    temp = solid_comp([solid1, solid2])
+    write_step_file(solid_comp([solid1, solid2]), 'holes_match_tilt.stp_1.stp')
     frame.open()
 
     ipdb.set_trace(context=10)
