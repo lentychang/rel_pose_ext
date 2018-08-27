@@ -1,24 +1,37 @@
 import random
+import ipdb
 
 
 def find_n_max(inputList):
+    """[summary]
+    compute the possible maximal (N)umber of matching points from one model.
+    In practical the function should be applied on holeCountLists of two models. And then choose the minimal one.
+    Arguments:
+        inputList {list} -- each element reprecent the number of connections to a point.
+                            The direction of connections is not considered.
+                            Ex, PointA->point B and from point B-> pointA are consider as the same connection.
+                            The connection number of point A is 1. Also connection number of point B is 1.
+
+    Returns:
+        maxPossibleN {int} -- N means the number of matching points
+    """
     ls = list(inputList)
     ls.sort()
     n = len(ls)
+    ipdb.set_trace(context=10)
     for i in range(max(ls), 0, -1):
         print(i)
         if i in ls:
-            val = n - ls.index(i)
-            if val >= i + 1:
-                maxPossibleVal = i
+            count = n - ls.index(i)
+            if count >= i + 1:
+                maxPossibleN = i + 1
                 break
         else:
             # if in not in ls, then use val computed from previous computation
-            if val >= i + 1:
-                maxPossibleVal = i
+            if count >= i + 1:
+                maxPossibleN = i + 1
                 break
-    n_max = maxPossibleVal + 1
-    return n_max
+    return maxPossibleN
 
 # [ToDo] Filter function is implemented in hole_detection.py, but not yet shift here!!
 
