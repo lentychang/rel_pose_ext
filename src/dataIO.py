@@ -11,6 +11,7 @@ import logging
 import numpy as np
 import ipdb
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.gp import gp_Dir
 from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_Sphere,\
                         GeomAbs_Torus, GeomAbs_BezierSurface, GeomAbs_BSplineSurface,\
@@ -22,6 +23,58 @@ from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_S
 from core_topology_traverse import Topo
 from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from OCC.Display.SimpleGui import init_display
+from OCC.StlAPI import StlAPI_Writer
+import pyassimp
+
+
+def stp2pcd(stpName, modelDir):
+    baseName = stpName.split('.')[0]
+    ipdb.set_trace(context=10)
+    stlName = baseName + '.stl'
+    plyName = baseName + '.ply'
+    pcdName = baseName + '.pcd'
+    stp2stl(filename=stpName, fileIODir=modelDir, linDeflection=0.1, solidOnly=True)
+    stl2ply(filename=stlName, fileIODir=modelDir)
+    print("Load a ply point cloud, print it, and render it")
+    pcd = read_point_cloud(os.path.join(modelDir, plyName))
+    # print(pcd)
+    # print(np.asarray(pcd.points))
+    # draw_geometries([pcd])
+    os.remove(os.path.join(modelDir, stlName))
+    os.remove(os.path.join(modelDir, plyName))
+    write_point_cloud(os.path.join(modelDir, pcdName), pcd)
+
+
+def stp2stl(filename, fileIODir, linDeflection=0.1, angDeflection=0.1, solidOnly=True):
+    # make sure the path exists otherwise OCE get confused
+    assert os.path.isdir(fileIODir)
+
+    nameBase = filename.split('.')[0]
+
+    stpName = os.path.abspath(os.path.join(fileIODir, nameBase + '.stp'))
+    modelShp = read_step_file(stpName)
+    if solidOnly:
+        solids = list(Topo(modelShp).solids())
+        modelShp = solids[0]
+    mesh = BRepMesh_IncrementalMesh(modelShp, linDeflection)
+    mesh.Perform()
+    assert mesh.IsDone()
+
+    # set the directory where to output the
+    stlName = os.path.abspath(os.path.join(fileIODir, nameBase + '.stl'))
+
+    stl_exporter = StlAPI_Writer()
+    stl_exporter.SetASCIIMode(True)  # change to False if you need binary export
+    stl_exporter.Write(modelShp, stlName)
+    # make sure the program was created
+    assert os.path.isfile(stlName)
+
+
+def stl2ply(filename, fileIODir):
+    stlName = os.path.abspath(os.path.join(fileIODir, filename))
+    scene = pyassimp.load(stlName, file_type='stl', processing=pyassimp.postprocess.aiProcess_Triangulate)
+    plyName = stlName.split('.')[0] + '.ply'
+    pyassimp.export(scene, plyName, file_type='ply')
 
 
 def deg2PlusMinusPi(deg):
