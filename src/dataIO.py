@@ -8,8 +8,10 @@ import os
 import os.path
 import sys
 import logging
+import numpy as np
 import ipdb
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
+from OCC.gp import gp_Dir
 from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_Sphere,\
                         GeomAbs_Torus, GeomAbs_BezierSurface, GeomAbs_BSplineSurface,\
                         GeomAbs_SurfaceOfRevolution, GeomAbs_SurfaceOfExtrusion,\
@@ -20,6 +22,19 @@ from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_S
 from core_topology_traverse import Topo
 from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from OCC.Display.SimpleGui import init_display
+
+
+def deg2PlusMinusPi(deg):
+    deg = deg % 360.0
+    if abs(deg) > 180.0:
+        deg += -1 * np.sign(deg) * 360.0
+    return deg
+
+
+def tuple2gpDir(tupl):
+    if len(tupl) != 3:
+        print('Error! length must be 3 in order to map to xyz')
+    return gp_Dir(tupl[0], tupl[1], tupl[2])
 
 
 def extractDictByVal(dictionary, valueList):
@@ -172,7 +187,7 @@ class Display():
         print("\nClicked - edge select mode !!")
         print('===============================================')
         for edge in edge_click:  # this should be a TopoDS_Face TODO check it is
-            print("Edge selected: ", edge)  # TopoDS_Shape
+            print("Edge selected: ", edge.HashCode(1000000))  # TopoDS_Shape
             shp = Topo(edge)
             self.shape_selected = list(shp.edges())[0]
             self.selected_shape_info()
@@ -200,7 +215,7 @@ class Display():
         print('===============================================')
 
         for face in face_click:  # this should be a TopoDS_Face TODO check it is
-            print("Face selected: ", face)  # TopoDS_Shape
+            print("Face selected: ", face.HashCode(1000000))  # TopoDS_Shape
             shp = Topo(face)
             self.shape_selected = list(shp.faces())[0]
             self.selected_shape_info()
