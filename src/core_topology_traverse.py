@@ -64,7 +64,7 @@ class WireExplorer(object):
             else:
                 current_item = self.wire_explorer.CurrentVertex()
             current_item_hash = current_item.__hash__()
-            if not current_item_hash in hashes:
+            if current_item_hash not in hashes:
                 hashes.append(current_item_hash)
                 occ_seq.Append(current_item)
             self.wire_explorer.Next()
@@ -170,7 +170,7 @@ class Topo(object):
             current_item = self.topExp.Current()
             current_item_hash = current_item.__hash__()
 
-            if not current_item_hash in hashes:
+            if current_item_hash not in hashes:
                 hashes.append(current_item_hash)
                 occ_seq.Append(current_item)
 
@@ -316,7 +316,7 @@ class Topo(object):
 
             # return the entity if not in set
             # to assure we're not returning entities several times
-            if not topo_entity in topo_set:
+            if topo_entity not in topo_set:
                 if self.ignore_orientation:
                     unique = True
                     for i in topo_set:
@@ -487,7 +487,7 @@ def dumpTopology(shape, level=0):
     s = shape.ShapeType()
     if s == TopAbs_VERTEX:
         pnt = brt.Pnt(topods_Vertex(shape))
-        print(".." * level  + "<Vertex %i: %s %s %s>" % (hash(shape), pnt.X(), pnt.Y(), pnt.Z()))
+        print(".." * level + "<Vertex %i: %s %s %s>" % (hash(shape), pnt.X(), pnt.Y(), pnt.Z()))
     else:
         print(".." * level, end="")
         print(shapeTypeString(shape))
@@ -527,7 +527,9 @@ def get_test_box_shape():
 def get_test_sphere_shape():
     return BRepPrimAPI_MakeSphere(10.).Shape()
 
-## Tests
+#  # Tests
+
+
 topo = Topo(get_test_box_shape())
 assert topo
 
@@ -655,6 +657,7 @@ def test_wires_out_of_scope():
         _vertices.append(vert)
     for v in _vertices:
         assert not v.IsNull()
+
 
 if __name__ == "__main__":
     test_kept_reference()
