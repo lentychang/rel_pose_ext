@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
 
 from OCC.GeomAbs import GeomAbs_Line, GeomAbs_Circle, GeomAbs_Ellipse, \
                         GeomAbs_Hyperbola, GeomAbs_Parabola, \
@@ -12,9 +14,8 @@ from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from core_topology_traverse import Topo
 # from enum import Enum
 import logging
-import ipdb
 
-from dataIO import read_step_file, Display
+from dataIO import read_step_file
 import os.path
 
 
