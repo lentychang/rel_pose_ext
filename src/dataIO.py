@@ -9,10 +9,10 @@ import os.path
 import sys
 import logging
 import numpy as np
-import ipdb
 from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.gp import gp_Dir
+from OCC.gp import gp_Vec, gp_Quaternion, gp_Dir, gp_Trsf
+from OCC.TopLoc import TopLoc_Location
 from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_Sphere,\
                         GeomAbs_Torus, GeomAbs_BezierSurface, GeomAbs_BSplineSurface,\
                         GeomAbs_SurfaceOfRevolution, GeomAbs_SurfaceOfExtrusion,\
@@ -25,11 +25,13 @@ from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from OCC.Display.SimpleGui import init_display
 from OCC.StlAPI import StlAPI_Writer
 import pyassimp
+from open3d import read_point_cloud, write_point_cloud
+import sys
+from topo2 import RecognizeTopo
 
 
 def stp2pcd(stpName, modelDir):
     baseName = stpName.split('.')[0]
-    ipdb.set_trace(context=10)
     stlName = baseName + '.stl'
     plyName = baseName + '.ply'
     pcdName = baseName + '.pcd'
@@ -43,6 +45,15 @@ def stp2pcd(stpName, modelDir):
     os.remove(os.path.join(modelDir, stlName))
     os.remove(os.path.join(modelDir, plyName))
     write_point_cloud(os.path.join(modelDir, pcdName), pcd)
+
+
+def stp2ply(stpName, modelDir):
+    baseName = stpName.split('.')[0]
+    stlName = baseName + '_mm.stl'
+    plyName = baseName + '_mm.ply'
+    stp2stl(filename=stpName, fileIODir=modelDir, linDeflection=0.1, solidOnly=True)
+    stl2ply(filename=stlName, fileIODir=modelDir)
+    os.remove(os.path.join(modelDir, stlName))
 
 
 def stp2stl(filename, fileIODir, linDeflection=0.1, angDeflection=0.1, solidOnly=True):
@@ -61,7 +72,7 @@ def stp2stl(filename, fileIODir, linDeflection=0.1, angDeflection=0.1, solidOnly
     assert mesh.IsDone()
 
     # set the directory where to output the
-    stlName = os.path.abspath(os.path.join(fileIODir, nameBase + '.stl'))
+    stlName = os.path.abspath(os.path.join(fileIODir, nameBase + '_mm.stl'))
 
     stl_exporter = StlAPI_Writer()
     stl_exporter.SetASCIIMode(True)  # change to False if you need binary export
@@ -116,6 +127,37 @@ def read_step_file(filename):
         print("Error: can't read file.")
         sys.exit(0)
     return a_shape
+
+
+def read_stp_as_solid(filename):
+    shape = read_step_file(filename)
+    solid = RecognizeTopo(shape).solids[0]
+
+    return solid
+
+
+def read_stp_solid_withTf(stpFilename, vecXYZlist, quaternionXYZWlist, unitIsMM=False):
+    solid = read_stp_as_solid(os.path.join('..', 'models', stpFilename + ".stp"))
+    trsf = gp_Trsf()
+    q = gp_Quaternion()
+    if not unitIsMM:
+        vecXYZlist = [i * 1000.0 for i in vecXYZlist]
+    q.Set(quaternionXYZWlist[0], quaternionXYZWlist[1], quaternionXYZWlist[2], quaternionXYZWlist[3])
+    trsf.SetTransformation(q, gp_Vec(vecXYZlist[0], vecXYZlist[1], vecXYZlist[2]))
+    toploc = TopLoc_Location(trsf)
+    solid.Move(toploc)
+    return solid
+
+
+def getTfFromSolid(solid, outputUnitIsMM=False):
+    gpVec = solid.Location().Transformation().TranslationPart()
+    gpQuaternion = solid.Location().Transformation().GetRotation()
+    vecList = [gpVec.X(), gpVec.Y(), gpVec.Z()]
+    qList = [gpQuaternion.X(), gpQuaternion.Y(), gpQuaternion.Z(), gpQuaternion.W()]
+    if not outputUnitIsMM:
+        vecList = [i / 1000.0 for i in vecList]
+
+    return [vecList, qList]
 
 
 def write_step_file(shape, filename, step_ver="AP214"):
@@ -274,7 +316,7 @@ class Display():
             self.selected_shape_info()
 
 
-if __name__ == '__main__':
+def test():
     logging.basicConfig(filename="logging.txt", filemode='w',
                         level=logging.warning)
     fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
@@ -286,5 +328,34 @@ if __name__ == '__main__':
 
     frame = Display(showShapes, run_display=True)
     print('\n\ntype "frame.open()" to reopen the frame !!!')
-    ipdb.set_trace()
+
+
+def __test_stp2ply():
+    a = sys.argv[1]
+    b = sys.argv[2]
+    print("filename:", a)
+    b = os.path.abspath(b)
+    print("modelDir:", b)
+
+    stp2ply(a, b)
+
+
+def __test_tf():
+    solid1 = read_stp_solid_withTf("lf064-03", [0.01, 0.01, 1], [0, 0, 1, 0], unitIsMM=False)
+    solid2 = read_stp_as_solid(os.path.join('..', 'models', "lf064-02" + ".stp"))
+
+    frame = Display(solid1, run_display=True)
+    frame.add_shape(solid2)
+
+    aa = getTfFromSolid(solid1, outputUnitIsMM=False)
+    for i in aa:
+        print(i)
+    frame.open()
+
+
+if __name__ == "__main__":
+    # __test_stp2ply()
+    # __test_tf()
+
+    # ipdb.set_trace()
 
