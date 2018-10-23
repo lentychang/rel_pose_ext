@@ -12,8 +12,7 @@ import ipdb
 from math import radians, degrees
 from core_topology_traverse import Topo
 from OCC.AIS import ais_ProjectPointOnPlane
-from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln
-from OCC.gp import gp_Trsf
+from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln, gp_Trsf
 from OCC.TopLoc import TopLoc_Location
 from OCC.BRepClass3d import BRepClass3d_SolidExplorer
 

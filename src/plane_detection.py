@@ -1,4 +1,5 @@
-
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
 
 import logging
 import os.path
@@ -224,8 +225,9 @@ if __name__ == '__main__':
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
                 'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp', 'holes_match_tilt.stp']
-    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[13]))
+                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp', 'holes_match_tilt.stp',
+                'holes_match_morehole.stp', 'holes_match_morehole_default.stp']
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-1]))
     shp_topo = RecognizeTopo(shapeFromModel)
     solid1 = shp_topo.solids[0]
     solid2 = shp_topo.solids[1]
@@ -240,9 +242,8 @@ if __name__ == '__main__':
 
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
-
     temp = solid_comp([solid1, solid2])
-    write_step_file(solid_comp([solid1, solid2]), 'holes_match_tilt.stp_1.stp')
+    write_step_file(solid_comp([solid1, solid2]), 'holes_match_morehole_default_1.stp')
     frame.open()
 
     ipdb.set_trace(context=10)
