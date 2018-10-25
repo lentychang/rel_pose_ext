@@ -12,7 +12,7 @@ import ipdb
 from math import radians, degrees
 from core_topology_traverse import Topo
 from OCC.AIS import ais_ProjectPointOnPlane
-from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln, gp_Trsf
+from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln, gp_Trsf, gp_Dir
 from OCC.TopLoc import TopLoc_Location
 from OCC.BRepClass3d import BRepClass3d_SolidExplorer
 
@@ -77,8 +77,8 @@ def getNeighborRelTable(holeList, projPlane, roundingDigit_dist=6, roundingDigit
     return {'distTable': distTable, 'angTable': angTable}
 
 
-def group_cylinders_byAxis(cylinders, tol_ang=0.5, roundDigit=6):
-    logging.debug('Entering group_cylinders_byAxis')
+def group_cylinders_byAxisDir(cylinders, anglTolDeg=5, roundDigit=6, groupParallelAx=True):
+    logging.debug('Entering group_cylinders_byAxisDir')
     cyl_ax = {}
     for cylinder in cylinders:
         cyl = BRepAdaptor_Surface(cylinder, True).Cylinder()
@@ -93,7 +93,34 @@ def group_cylinders_byAxis(cylinders, tol_ang=0.5, roundDigit=6):
     for key in cyl_ax.keys():
         listOflist = list(find_full_cylinder(cyl_ax[key]).values())
         cyl_ax[key] = [k for i in listOflist for k in i]
-    return cyl_ax
+
+    if groupParallelAx:
+        axisKeyList = list(cyl_ax.keys())
+        combineList = []
+        j = 0
+        while len(axisKeyList) >= 1:
+            ax1 = axisKeyList.pop(0)
+            grp = [ax1]
+            dir1 = gp_Dir(ax1[0], ax1[1], ax1[2])
+            while j < len(axisKeyList):
+                ax2 = axisKeyList[j]
+                dir2 = gp_Dir(ax2[0], ax2[1], ax2[2])
+                j += 1
+                if dir1.IsParallel(dir2, radians(anglTolDeg)):
+                    grp.append(ax2)
+                    j -= 1
+                    axisKeyList.pop(j)
+            combineList.append(grp)
+            j = 0
+        cyl_grpByAx = {}
+        for i in combineList:
+            cyl_grpByAx[i[0]] = []
+            for j in i:
+                cyl_grpByAx[i[0]] += cyl_ax[j]
+    else:
+        cyl_grpByAx = cyl_ax
+
+    return cyl_grpByAx
 
 
 def __group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1, roundDigit=6):
@@ -232,12 +259,26 @@ def select_cyl_by_axisDir(full_cylinders, gpDir, ang_tol=0.5):
     return selected_cyl_List
 
 
-def filter_cylinder_by_position(cylList, projPln, dist_tol=0.3):
-    initPnt = ais_ProjectPointOnPlane(BRepAdaptor_Surface(cylList[0], True).Cylinder().Location(), projPln)
+def filter_cylinder_by_position(cylList_from_solidAdd, projPln, dist_tol=0.3):
+    """Project all points of cylinders' axis into the projPln, and return the projected point on the projPln
+
+    Arguments:
+        cylList_from_solidAdd {[type]} -- [description]
+        projPln {[type]} -- [description]
+
+    Keyword Arguments:
+        dist_tol {float} -- [description] (default: {0.3})
+
+    Returns:
+        [type] -- [description]
+    """
+    # project the first cylinder to get the point. Which is needed for the later distance calculation
+    initPnt = ais_ProjectPointOnPlane(BRepAdaptor_Surface(cylList_from_solidAdd[0], True).Cylinder().Location(), projPln)
     projPntList = [initPnt]
-    for cyl in cylList:
+    for cyl in cylList_from_solidAdd:
         newPnt = ais_ProjectPointOnPlane(BRepAdaptor_Surface(cyl, True).Cylinder().Location(), projPln)
         isNewPnt = True
+        # check whehter the projected point overlaps other points
         for pnt in projPntList:
             if newPnt.Distance(pnt) < dist_tol:
                 isNewPnt = False
@@ -246,14 +287,13 @@ def filter_cylinder_by_position(cylList, projPln, dist_tol=0.3):
     return projPntList
 
 
-def get_shortest_vec(pntList1, pntList2):
-    minVec = gp_Vec(pntList1[0], pntList2[0])
-    for pnt1 in pntList1:
-        for pnt2 in pntList2:
-            newVec = gp_Vec(pnt1, pnt2)
+def get_shortest_vec(pntList_add, pntList_base):
+    minVec = gp_Vec(pntList_add[0], pntList_base[0])
+    for pnt_base in pntList_base:
+        for pnt_add in pntList_add:
+            newVec = gp_Vec(pnt_add, pnt_base)
             if newVec.Magnitude() < minVec.Magnitude():
                 minVec = newVec
-
     return minVec
 
 
@@ -447,7 +487,7 @@ def get_holes_pairs(list1, list2, projPlane, roundDigit_lin=6, roundDigit_ang=6)
             if m == n:
                 holeMatchingPair.append([i, j])
         if len(holeMatchingPair) != 0:
-            print('[Warn] One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')            
+            print('[Warn] One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')
         print('[Warn] There''s no common hole pairs !!!')
         return []
     # test_print_matchedPntPairXYZ(holeMatchingPair)
@@ -472,18 +512,23 @@ def gpVec2npMat(gpVec):
 
 
 def align_holes(shp, matched_hole_pairs):
+    # matching points
     pntsA = [i[0].projLocation for i in matched_hole_pairs]
     pntsB = [i[1].projLocation for i in matched_hole_pairs]
 
+    # center of Mass
     cenA = centerOfMass_pnts(pntsA)
     cenB = centerOfMass_pnts(pntsB)
 
+    # translation vector from centerOfMass to origin
     mvVecA2O = gp_Vec(cenA, gp_Pnt(0, 0, 0))
     mvVecB2O = gp_Vec(cenB, gp_Pnt(0, 0, 0))
 
+    # translate all points, with rigid movement to move solid's center of Mass to origin
     newPntsA = [i.Translated(mvVecA2O) for i in pntsA]
     newPntsB = [i.Translated(mvVecB2O) for i in pntsB]
 
+    # matching 2 points set by SVD, transform from B to A
     npMatA = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsA]
     npMatB = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsB]
     varMat = np.asmatrix(np.zeros((3, 3)))
@@ -493,7 +538,7 @@ def align_holes(shp, matched_hole_pairs):
     linAlg = np.linalg
     U, s, Vh = linAlg.svd(varMat, full_matrices=True)
     R = Vh.transpose() * U.transpose()
-    # [ToDo] Don't know why second column should multiply -1
+    # [ToDo] Don't know why third column should multiply -1
     reverseMat = np.matrix([(1, 0, 0),
                             (0, 1, 0),
                             (0, 0, -1)])
@@ -501,7 +546,7 @@ def align_holes(shp, matched_hole_pairs):
     # if R has determinant -1, then R is a rotation plus a reflection
     if linAlg.det(R) < 0:
         print('det(R) is < 0, change the sign of last column of Vh')
-        R = (reverseMat * Vh).transpose() * U.transpose()
+        R = reverseMat * (Vh.transpose()) * U.transpose()
 
     # q = quaternion_from_matrix(R)
     R = np.array(R)
@@ -509,6 +554,7 @@ def align_holes(shp, matched_hole_pairs):
                     R[1][0], R[1][1], R[1][2],
                     R[2][0], R[2][1], R[2][2])
     q = gp_Quaternion(RgpMat)
+    ipdb.set_trace()
 
     trsf = gp_Trsf()
     trsf.SetTranslation(mvVecB2O)
@@ -526,9 +572,199 @@ def align_holes(shp, matched_hole_pairs):
     shp.Move(toploc)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(filename="logging.txt", filemode='w',
-                        level=logging.warning)
+def match_singleHole(solid_add, solid_base):
+
+    cyls_sel_base, cyls_sel_add, projPln = selectCylinderFromClosestPln(solid_add, solid_base)
+    pntList_base = []
+    for i in cyls_sel_base:
+        loc = BRepAdaptor_Surface(i).Cylinder().Location()
+        pnt = gp_Pnt(loc.X(), loc.Y(), loc.Z())
+        pntList_base.append(pnt)
+
+    pntList_add = []
+    for i in cyls_sel_add:
+        loc = BRepAdaptor_Surface(i).Cylinder().Location()
+        pnt = gp_Pnt(loc.X(), loc.Y(), loc.Z())
+        pntList_add.append(pnt)
+
+    pntList_base_proj = [ais_ProjectPointOnPlane(pnt, projPln) for pnt in pntList_base]
+    pntList_add_proj = [ais_ProjectPointOnPlane(pnt, projPln) for pnt in pntList_add]
+
+    mvVec = get_shortest_vec(pntList_add_proj, pntList_base_proj)
+    ipdb.set_trace()
+    trsf = gp_Trsf()
+    trsf.SetTranslation(mvVec)
+    solid2.Move(TopLoc_Location(trsf))
+
+
+def match_multiHoles(solid_add, solid_base):
+    cyls_sel_base, cyls_sel_add, projPln = selectCylinderFromClosestPln(solid_add, solid_base)
+
+    # [ToDo] select cylinders from plane
+    # matched_hole_pairs = get_holes_pairs(sel_list1, sel_list2, projPln)
+    matched_hole_pairs = get_holes_pairs(cyls_sel_base, cyls_sel_add, projPln)
+    if len(matched_hole_pairs) != 0:
+        align_holes(solid2, matched_hole_pairs)
+
+
+def autoHoleAlign(solid_add, solid_base):
+    """Automatic align holes
+
+    Arguments:
+        solid_add {TopoDS_Shape} -- [description]
+        solid_base {TopoDS_Shape} -- [description]
+
+    Returns:
+        {string} -- "succeed" means there are more than 2 holes can be used on alignment, which restrict 5 DOF on added solid
+                    "half"    means there is only 1 hole can be used on alignment, which restrict 4 DOF on added solid
+                    "failed"  means there is no hole can be used on alignment, which restrict 0 DOF
+    """
+    holeAlignResult = "failed"
+    holePair = getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0)
+    if holePair > 1:
+        match_multiHoles(solid_add, solid_base)
+        holeAlignResult = "succeed"
+    elif holePair == 1:
+        match_singleHole(solid_add, solid_base)
+        holeAlignResult = "half"
+    elif holePair == 0:
+        print("no hole pair found")
+        holeAlignResult = "failed"
+    print("Result of Hole alignment: %s" % (holeAlignResult))
+    return holeAlignResult
+
+
+def getParallelDirPair(dirList_base, dirList_add, angTolDeg=5.0):
+    commonList = []
+    j = 0
+    while len(dirList_base) > 0:
+        i = dirList_base.pop(0)
+        dir1 = gp_Dir(i[0], i[1], i[2])
+
+        while j < len(dirList_add):
+            dir2 = gp_Dir(dirList_add[j][0], dirList_add[j][1], dirList_add[j][2])
+            j += 1
+            if dir1.IsParallel(dir2, radians(angTolDeg)):
+                j -= 1
+                commonList.append((i, dirList_add[j]))
+                dirList_add.pop(j)
+                pass
+        j = 0
+    return commonList
+
+
+def getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0):
+    """Get number of holes could be matched. This number is used as a flag for determining which hole matching algorithm is used.
+
+    Arguments:
+        solid_add {TopoDS_Solid} -- Both solides will not be moved
+        solid_base {TopoDS_Solid} -- [description]
+
+    Returns:
+        {int} -- Maximal number of holes could be matched
+    """
+
+    cylinders_base = RecognizeTopo(solid_base).cylinders()
+    cylinders_add = RecognizeTopo(solid_add).cylinders()
+    holeAxGrp_base = group_cylinders_byAxisDir(cylinders_base, groupParallelAx=True)
+    holeAxGrp_add = group_cylinders_byAxisDir(cylinders_add, groupParallelAx=True)
+
+    holeAxList_base = list(holeAxGrp_base.keys())
+    holeAxList_add = list(holeAxGrp_add.keys())
+
+    commonList = getParallelDirPair(holeAxList_base, holeAxList_add, angTolDeg=angTolDeg)
+
+    tfValue = []
+    for i in commonList:
+        tfValue.append(min(len(__group_coaxial_cylinders(holeAxGrp_base[i[0]])), len(__group_coaxial_cylinders(holeAxGrp_add[i[1]]))))
+
+    return max(tfValue)
+
+
+def group_cyl_byPln(solid, distTol=0.5, angTolDeg=5.0):
+    cylinders = RecognizeTopo(solid).cylinders()
+    cyl_dirGrp = group_cylinders_byAxisDir(cylinders, anglTolDeg=angTolDeg, groupParallelAx=True)
+    cyl_dirGrpKeys = list(cyl_dirGrp.keys())
+
+    # group cylinders by plane
+    CylinderGrpsFromDiffPln = {}
+    j = 0
+    for dirKey in cyl_dirGrpKeys:
+        CylinderGrpsFromDiffPln[dirKey] = []
+        parallel_cyl_grps = cyl_dirGrp[dirKey].copy()
+        grp_cylinderOnSamePln = {}
+        while len(parallel_cyl_grps) > 1:
+            # take out the first element for creating plane, and search the other cylinders on the same plane
+            firstCylinder = parallel_cyl_grps.pop(0)
+            # fitting a geomety surface to TopoDS_Surface
+            brepCylinder = BRepAdaptor_Surface(firstCylinder).Cylinder()
+            dir1 = brepCylinder.Axis().Direction()
+            # location of cylinder is usually the location of local coordinate system, which is on the axis of cylinder
+            loc1 = brepCylinder.Location()
+            # create gp_Pln
+            pln = gp_Pln(loc1, dir1)
+            grp_cylinderOnSamePln[pln] = [firstCylinder]
+            # Search the cylinders on the same pln, if yes, extract from parallel_cyl_grps
+            # loop all elements in parallel_cyl_grps
+            while j < len(parallel_cyl_grps):
+                brepCylinder2 = BRepAdaptor_Surface(parallel_cyl_grps[j]).Cylinder()
+                loc2 = brepCylinder2.Location()
+                if pln.Distance(gp_Pnt(loc2.X(), loc2.Y(), loc2.Z())) < distTol:
+                    grp_cylinderOnSamePln[pln].append(parallel_cyl_grps[j])
+                    parallel_cyl_grps.pop(j)
+                else:
+                    j += 1
+            j = 0
+        CylinderGrpsFromDiffPln[dirKey] = grp_cylinderOnSamePln
+    return CylinderGrpsFromDiffPln
+
+
+def selectCylinderFromClosestPln(solid_add, solid_base, roundingDigit=6):
+    # selecting closest plane as the projectPln
+
+    cylGrp_byPln_base = group_cyl_byPln(solid_base)
+    cylGrp_byPln_add = group_cyl_byPln(solid_add)
+
+    parallelDirPairList = getParallelDirPair(list(cylGrp_byPln_base.keys()), list(cylGrp_byPln_add.keys()))
+
+    plnPairWithDist = {}
+    for parallelDirPair in parallelDirPairList:
+
+        plnList_base = list(cylGrp_byPln_base[parallelDirPair[0]].keys())
+        plnList_add = list(cylGrp_byPln_add[parallelDirPair[1]].keys())
+        for pln_base in plnList_base:
+            for pln_add in plnList_add:
+                dist = round(pln_base.Distance(pln_add.Location()), roundingDigit)
+                if dist not in plnPairWithDist.keys():
+                    # here we use point on pln_add instead of pln_add to prevent error from slightly unparallel plane
+                    # for a better estimation of distance, a point nearby center of shape must be used
+                    plnPairWithDist[dist] = [(parallelDirPair, (pln_base, pln_add))]
+                else:
+                    plnPairWithDist[dist].append((parallelDirPair, (pln_base, pln_add)))
+    distList = list(plnPairWithDist.keys())
+    distList.sort()
+    closestPlnPairs = plnPairWithDist[distList[0]]
+
+    if len(closestPlnPairs) > 1:
+        logging.warning("There are more than one closest plane pair, the pair with the direction close to Z axis is selected")
+        zAx = gp_Dir(0, 0, 1)
+        min_ang = radians(180)
+        for i in range(0, len(closestPlnPairs)):
+            ang = zAx.Angle(tuple2gpDir(closestPlnPairs[i][0][0]))
+            ang = min(ang, radians(180) - ang)
+            if min_ang > ang:
+                min_ang = ang
+                closestPlnPair = closestPlnPairs[i]
+    else:
+        closestPlnPair = closestPlnPairs[0]
+
+    projPln = closestPlnPair[1][1]
+    sel_cyls_base = cylGrp_byPln_base[closestPlnPair[0][0]][closestPlnPair[1][0]]
+    sel_cyls_add = cylGrp_byPln_add[closestPlnPair[0][1]][closestPlnPair[1][1]]
+    return [sel_cyls_base, sel_cyls_add, projPln]
+
+
+def __test_multiHoleMatching():
     fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
@@ -538,67 +774,41 @@ if __name__ == '__main__':
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-1]))
     shp_topo = RecognizeTopo(shapeFromModel)
 
-    solid1 = shp_topo.solids[0]
-    solid2 = shp_topo.solids[1]
+    solid_base = shp_topo.solids[0]
+    solid_add = shp_topo.solids[1]
 
-    explorer = BRepClass3d_SolidExplorer(solid1)
+    match_multiHoles(solid_add, solid_base)
+    # explorer = BRepClass3d_SolidExplorer(solid1)
 
-    ipdb.set_trace(context=10)
-
-    frame = Display(solid1, run_display=True)
-    frame.add_shape(solid2)
+    frame = Display(solid_base, run_display=True)
+    frame.add_shape(solid_add)
     frame.open()
+    ipdb.set_trace()
 
-    cylinders1 = RecognizeTopo(solid1).cylinders()
-    cylinders2 = RecognizeTopo(solid2).cylinders()
 
-    full_cylinder_group1 = find_full_cylinder(cylinders1)
-    full_cylinder_group2 = find_full_cylinder(cylinders2)
+def __test_singleHoleMatching():
+    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
+                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
+                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
+                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
+                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match_3.stp', 'holes_match_tilt_1.stp',
+                'holes_match_morehole_1.stp', 'holes_match_morehole_default_1.stp', 'holes_match_default_2.stp']
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-6]))
+    shp_topo = RecognizeTopo(shapeFromModel)
 
-    holeAxisGrp1 = group_cylinders_byAxis(cylinders1)
-    holeAxisGrp2 = group_cylinders_byAxis(cylinders2)
+    solid_base = shp_topo.solids[0]
+    solid_add = shp_topo.solids[1]
 
-    # find cylinders with axis perpendicular to plane or select cylinder by axis direction?
-    # find coaxial between solid1 and solid2
+    match_singleHole(solid_add, solid_base)
 
-    # match single hole
-    # projPln = BRepAdaptor_Surface(RecognizeTopo(solid1).planes()[5], True).Plane()
-    # normal = projPln.Axis().Direction()
-    holeAxiss1 = list(holeAxisGrp1.keys())
-    holeAxiss2 = list(holeAxisGrp2.keys())
-    key1 = holeAxiss1[3]
-    key2 = holeAxiss1[1]
-
-    projPlnLoc = BRepAdaptor_Surface(holeAxisGrp1[key1][0]).Cylinder().Location()
-    # projPlnLoc = gp_Pnt(0, 0, 0)
-
-    projPln = gp_Pln(projPlnLoc, tuple2gpDir(key1))
-
-    newHoleAxisGrp1 = {key1: []}
-    for i in holeAxisGrp1[key1]:
-        cyl = BRepAdaptor_Surface(i).Cylinder()
-        pnt = cyl.Location()
-        if projPln.Contains(pnt, 0.1):
-            newHoleAxisGrp1[key1].append(i)
-
-    # [ToDo] select cylinders from plane
-    # matched_hole_pairs = get_holes_pairs(sel_list1, sel_list2, projPln)
-    ipdb.set_trace(context=10)
-    matched_hole_pairs = get_holes_pairs(newHoleAxisGrp1[key1], holeAxisGrp2[key2], projPln)
-    if len(matched_hole_pairs) != 0:
-        align_holes(solid2, matched_hole_pairs)
-
+    frame = Display(solid_base, run_display=True)
+    frame.add_shape(solid_add)
     frame.open()
+    ipdb.set_trace()
 
-    '''
-    # match single hole
-    filterList1 = filter_cylinder_by_position(sel_list1, projPln)
-    filterList2 = filter_cylinder_by_position(sel_list2, projPln)
 
-    mvVec = get_shortest_vec(filterList2, filterList1)
-    trsf = gp_Trsf()
-    trsf.SetTranslation(mvVec)
-    solid2.Move(TopLoc_Location(trsf))
-    '''
+if __name__ == '__main__':
+    # __test_singleHoleMatching()
+    __test_multiHoleMatching()
 
     ipdb.set_trace(context=10)
