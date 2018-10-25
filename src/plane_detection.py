@@ -28,8 +28,8 @@ def group_planes_by_axis(shape):
         shape {TopoDS_Shape} -- [description]
 
     Returns:
-        dictionary -- key: normal vector as string)
-                      value: list of TopoDS_Shape(Plane)
+        {dict} -- key: normal vector as string)
+                  value: list of TopoDS_Shape(Plane)
     """
     planeList = RecognizeTopo(shape).planes()
     pln_dict = {}
@@ -99,13 +99,16 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
     normal_base_withPlanes = group_planes_by_axis(solid1)
     normal_add_withPlanes = group_planes_by_axis(solid2)
 
+    # if normal_base_withPlanes is None:
+    #     plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))
+    #     plnYZ = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0)))
+    #     plnZX = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 1.0, 0.0)))
+    #     normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()],
+    #                               (1, 0, 0): [BRepBuilderAPI_MakeFace(plnYZ).Face()],
+    #                               (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
     if normal_base_withPlanes is None:
-        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))
-        plnYZ = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0)))
-        plnZX = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 1.0, 0.0)))
-        normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()],
-                                  (1, 0, 0): [BRepBuilderAPI_MakeFace(plnYZ).Face()],
-                                  (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
+        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))        
+        normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()]}
     normals_base = normal_base_withPlanes.keys()
     normals_add = normal_add_withPlanes.keys()
     minPair = {'minVal': 90.0,
@@ -154,7 +157,18 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add, rotateAng):
     shp_add.Move(shp2Toploc)
 
 
-def get_closest_parallel_planePair(solid_base, solid_add, init_min_dist=10.0):
+def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.0):
+    """
+    Arguments:
+        solid_add {TopoDS_Solid} -- The solid going to be added
+
+    Keyword Arguments:
+        solid_base {TopoDS_Solid} -- By default, solid_base will be xy-plane (default: {None})
+        init_min_dist {float} -- [description] (default: {10.0})
+
+    Returns:
+        {dict} -- keyValues: miniDist, topoPair, geomPair, mvVec
+    """
     min_dist = init_min_dist
     ang_list = find_closest_normal_pair(solid_add, solid_base)
     axisGrp1 = group_planes_by_axis(solid1)
@@ -194,9 +208,19 @@ def align_closest_planes(shp, mvVec):
     shp.Move(shp2Toploc)
 
 
-def autoPlaneAlign(solid_base, solid_add, negletParallelPln=False):
+def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
+    """ A function to align solids with it's parallel plane pairs
+    If solid_base is not given, by default, the added solid will be align to xy-plane
+
+    Arguments:
+        solid_add {TopoDS_Solid} -- This solid will be moved in order to algin parallel plane pair
+
+    Keyword Arguments:
+        solid_base {TopoDS_Solid} -- This solid will not be moved. If not given, by default, it will be xy-plane (default: {None})
+        negletParallelPln {bool} -- Set it False to cacel alignmet, if there's already parallel planes (default: {False})
+    """
     # find normal of closest plane pairs
-    ang_list = find_closest_normal_pair(solid_add=solid2, solid_base=solid1, negelet_parallelPair=negletParallelPln)
+    ang_list = find_closest_normal_pair(solid_add=solid_add, solid_base=solid_base, negelet_parallelPair=negletParallelPln)
 
     # Get rotation axis
     # [ToDo] the angle value related to rotation direction is not define clearly
