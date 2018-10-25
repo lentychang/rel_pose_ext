@@ -15,7 +15,8 @@ from core_topology_traverse import Topo
 # from enum import Enum
 import logging
 
-from dataIO import read_step_file
+# disable due to the file is import to dataIO for testing
+# from dataIO import read_step_file
 import os.path
 
 
@@ -96,8 +97,8 @@ class RecognizeTopo():
         print('level = ', level)
 
         if self.__isDebug:
-            for k in range(0, len(element_list)-1):
-                if listLen[k] == 0 and listLen[k+1] != 0:
+            for k in range(0, len(element_list) - 1):
+                if listLen[k] == 0 and listLen[k + 1] != 0:
                     logging.warning('[Error] Wrong hierachy about the shapes, \
                 Ex. compounds in not alway on higher level than comp_solids?')
 
@@ -182,9 +183,7 @@ class RecognizeTopo():
         return edges
 
 
-if __name__ == '__main__':
-    logging.basicConfig(filename="logging.txt", filemode='w', level=logging.warning)
-
+def __test_RecognizeTopo():
     fileList = ['lf064-01.stp',
                 'cylinder_group_test.stp',
                 'cylinder_cut.stp',
@@ -196,7 +195,10 @@ if __name__ == '__main__':
                 'cylinders.stp',
                 'compound_solid_face-no-contact.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[9]))
-
     test = RecognizeTopo(shapeFromModel)
-    # gui = Display(shapeFromModel, run_display=True)    
+
+
+if __name__ == '__main__':
+    __test_RecognizeTopo()
+    # gui = Display(shapeFromModel, run_display=True) 
 
