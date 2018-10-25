@@ -136,8 +136,9 @@ def read_stp_as_solid(filename):
     return solid
 
 
-def read_stp_solid_withTf(stpFilename, vecXYZlist, quaternionXYZWlist, unitIsMM=False):
-    solid = read_stp_as_solid(os.path.join('..', 'models', stpFilename + ".stp"))
+def read_stp_solid_withTf(modelDir, stpFilename, vecXYZlist, quaternionXYZWlist, unitIsMM=False):
+
+    solid = read_stp_as_solid(os.path.join(modelDir, stpFilename + ".stp"))
     trsf = gp_Trsf()
     q = gp_Quaternion()
     if not unitIsMM:
@@ -340,9 +341,9 @@ def __test_stp2ply():
     stp2ply(a, b)
 
 
-def __test_tf():
+def __test_read_stp_solid_withTf():
     solid1 = read_stp_solid_withTf("lf064-03", [0.01, 0.01, 1], [0, 0, 1, 0], unitIsMM=False)
-    solid2 = read_stp_as_solid(os.path.join('..', 'models', "lf064-02" + ".stp"))
+    solid2 = read_stp_as_solid(os.path.join("/root/catkin_ws/src/rel_pose_ext/models", "lf064-02" + ".stp"))
 
     frame = Display(solid1, run_display=True)
     frame.add_shape(solid2)
@@ -355,7 +356,7 @@ def __test_tf():
 
 if __name__ == "__main__":
     # __test_stp2ply()
-    # __test_tf()
+    __test_read_stp_solid_withTf()
 
     # ipdb.set_trace()
 
