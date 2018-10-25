@@ -242,9 +242,7 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
     align_closest_planes(solid_add, minDistPair['mvVec'])
 
 
-if __name__ == '__main__':
-    logging.basicConfig(filename="logging.txt", filemode='w',
-                        level=logging.warning)
+def __test_autoPlaneAlign():
     fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
                 'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
                 'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
@@ -256,18 +254,17 @@ if __name__ == '__main__':
     solid1 = shp_topo.solids[0]
     solid2 = shp_topo.solids[1]
 
-    pnt1 = centerOfMass(solid1)
-    pnt2 = centerOfMass(solid2)
-
     frame = Display(solid1, run_display=True)
     frame.add_shape(solid2)
     frame.open()
     ipdb.set_trace(context=10)
-
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
-    temp = solid_comp([solid1, solid2])
     write_step_file(solid_comp([solid1, solid2]), 'holes_match_morehole_default_1.stp')
     frame.open()
+
+
+if __name__ == '__main__':
+    __test_autoPlaneAlign()
 
     ipdb.set_trace(context=10)
