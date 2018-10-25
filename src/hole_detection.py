@@ -58,7 +58,7 @@ def create_holeList(topds_shp_list, proj_pln=None):
     for i in topds_shp_list:
         aHole = Hole(i)
         if proj_pln is not None:
-            aHole.setProjPln(projPln)
+            aHole.setProjPln(proj_pln)
         holeList.append(aHole)
     return holeList
 
@@ -594,7 +594,7 @@ def match_singleHole(solid_add, solid_base):
     ipdb.set_trace()
     trsf = gp_Trsf()
     trsf.SetTranslation(mvVec)
-    solid2.Move(TopLoc_Location(trsf))
+    solid_add.Move(TopLoc_Location(trsf))
 
 
 def match_multiHoles(solid_add, solid_base):
@@ -604,7 +604,7 @@ def match_multiHoles(solid_add, solid_base):
     # matched_hole_pairs = get_holes_pairs(sel_list1, sel_list2, projPln)
     matched_hole_pairs = get_holes_pairs(cyls_sel_base, cyls_sel_add, projPln)
     if len(matched_hole_pairs) != 0:
-        align_holes(solid2, matched_hole_pairs)
+        align_holes(solid_add, matched_hole_pairs)
 
 
 def autoHoleAlign(solid_add, solid_base):
