@@ -229,17 +229,17 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
     # need to weight by the area of surface
 
     # here we only align the first pair
-    align_planes_byNormal(solid2, ang_list['minGpDirPair'][0][0], ang_list['minGpDirPair'][0][1], rotateAng=ang_list['minVal'])
+    align_planes_byNormal(solid_add, ang_list['minGpDirPair'][0][0], ang_list['minGpDirPair'][0][1], rotateAng=ang_list['minVal'])
 
     # Plane distance detection
     # [ToDo] a better algorithm to choose the correct plane is needed
 
-    minDistPair = get_closest_parallel_planePair(solid2, solid1)
+    minDistPair = get_closest_parallel_planePair(solid_add, solid_add)
 
     # Move plane to be coincident
     # [ToDo] vector direction need to be determined...
     # [ToDo] while loop to move until distance smaller than given distance tolerance
-    align_closest_planes(solid2, minDistPair['mvVec'])
+    align_closest_planes(solid_add, minDistPair['mvVec'])
 
 
 if __name__ == '__main__':
