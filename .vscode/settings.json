@@ -2,5 +2,9 @@
     "python.pythonPath": "/home/lenty/miniconda/envs/pythonocc/bin/python",
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "terminal.integrated.fontFamily": "monospace",
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/kinetic/lib/python2.7/dist-packages"
+    ]
 }

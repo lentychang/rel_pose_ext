@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
-import logging
 import os.path
 from math import degrees, radians
 
@@ -9,7 +8,9 @@ import ipdb
 import numpy as np
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeSolid, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
+from OCC.GC import GC_MakeSegment
 from OCC.BRepGProp import brepgprop_VolumeProperties
 from OCC.gp import gp_Ax1, gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCC.GProp import GProp_GProps
@@ -31,17 +32,21 @@ def group_planes_by_axis(shape):
         {dict} -- key: normal vector as string)
                   value: list of TopoDS_Shape(Plane)
     """
-    planeList = RecognizeTopo(shape).planes()
-    pln_dict = {}
-    for pln in planeList:
-        gp_pln = BRepAdaptor_Surface(pln).Plane()
-        normal = gp_pln.Axis().Direction()
-        key = '%.6f,%.6f,%.6f' % (round(normal.X(), 6), round(normal.Y(), 6), round(normal.Z(), 6))
-        key = tuple([float(i) for i in key.split(',')])
-        if key not in pln_dict.keys():
-            pln_dict[key] = [pln]
-        else:
-            pln_dict[key].append(pln)
+    if shape is None:
+        print("[Warn] input shape is None")
+        pln_dict = None
+    else:
+        planeList = RecognizeTopo(shape).planes()
+        pln_dict = {}
+        for pln in planeList:
+            gp_pln = BRepAdaptor_Surface(pln).Plane()
+            normal = gp_pln.Axis().Direction()
+            key = '%.6f,%.6f,%.6f' % (round(normal.X(), 6), round(normal.Y(), 6), round(normal.Z(), 6))
+            key = tuple([float(i) for i in key.split(',')])
+            if key not in pln_dict.keys():
+                pln_dict[key] = [pln]
+            else:
+                pln_dict[key].append(pln)
     return pln_dict
 
 
@@ -96,8 +101,11 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
                         'minDirPair': {tuple of float} direction of normal
     """
     # should consider Z axis first?
-    normal_base_withPlanes = group_planes_by_axis(solid1)
-    normal_add_withPlanes = group_planes_by_axis(solid2)
+    if solid_base is None:
+        normal_base_withPlanes = None
+    else:
+        normal_base_withPlanes = group_planes_by_axis(solid_base)
+    normal_add_withPlanes = group_planes_by_axis(solid_add)
 
     # if normal_base_withPlanes is None:
     #     plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))
@@ -107,7 +115,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
     #                               (1, 0, 0): [BRepBuilderAPI_MakeFace(plnYZ).Face()],
     #                               (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
     if normal_base_withPlanes is None:
-        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))        
+        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))   
         normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()]}
     normals_base = normal_base_withPlanes.keys()
     normals_add = normal_add_withPlanes.keys()
@@ -147,14 +155,37 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add, rotateAng):
         normalDir_add {gp_Dir} -- [description]
         rotateAng [deg]{float} -- [description]
     """
-    rotateAxDir = normalDir_base.Crossed(normalDir_add)
-    rotateAx1 = gp_Ax1(pnt2, rotateAxDir)
-    ax3 = gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
-    ax3 = ax3.Rotated(rotateAx1, radians(rotateAng))
-    shp2Trsf = gp_Trsf()
-    shp2Trsf.SetTransformation(ax3)
-    shp2Toploc = TopLoc_Location(shp2Trsf)
-    shp_add.Move(shp2Toploc)
+    if not normalDir_base.IsParallel(normalDir_add, radians(0.01)):
+        rotateAxDir = normalDir_base.Crossed(normalDir_add)
+        rotateAx1 = gp_Ax1(centerOfMass(shp_add), rotateAxDir)
+        ax3 = gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
+        ax3 = ax3.Rotated(rotateAx1, radians(rotateAng))
+        shp2Trsf = gp_Trsf()
+        shp2Trsf.SetTransformation(ax3)
+        shp2Toploc = TopLoc_Location(shp2Trsf)
+        shp_add.Move(shp2Toploc)
+    else:
+        print("[Info] Planes are already parallel to each other")
+
+
+def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):
+    pntList = [gp_Pnt(width / 2., depth / 2., 0),
+               gp_Pnt(-width / 2., depth / 2., 0),
+               gp_Pnt(-width / 2., -depth / 2., 0),
+               gp_Pnt(width / 2., -depth / 2., 0)]
+    edgList = []
+    for i in range(0, len(pntList) - 1):
+        edgList.append(BRepBuilderAPI_MakeEdge(pntList[i], pntList[i + 1]))
+    edgList.append(BRepBuilderAPI_MakeEdge(pntList[3], pntList[0]))
+
+    wire = BRepBuilderAPI_MakeWire()
+    for i in edgList:
+        wire.Add(i.Edge())
+    wireProfile = wire.Wire()
+    faceProfile = BRepBuilderAPI_MakeFace(wireProfile).Shape()
+    aPrismVec = gp_Vec(0, 0, height)
+
+    return BRepPrimAPI_MakePrism(faceProfile, aPrismVec).Shape()
 
 
 def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.0):
@@ -171,8 +202,10 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.
     """
     min_dist = init_min_dist
     ang_list = find_closest_normal_pair(solid_add, solid_base)
-    axisGrp1 = group_planes_by_axis(solid1)
-    axisGrp2 = group_planes_by_axis(solid2)
+    if solid_base is None:
+        solid_base = gen_boxSolidAsTable()
+    axisGrp1 = group_planes_by_axis(solid_base)
+    axisGrp2 = group_planes_by_axis(solid_add)
     axisPair = ang_list['minAxisKeyPair']
     for axKeyPair in axisPair:
         for topoPln1 in axisGrp1[axKeyPair[0]]:
@@ -234,7 +267,7 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
     # Plane distance detection
     # [ToDo] a better algorithm to choose the correct plane is needed
 
-    minDistPair = get_closest_parallel_planePair(solid_add, solid_add)
+    minDistPair = get_closest_parallel_planePair(solid_add, solid_base)
 
     # Move plane to be coincident
     # [ToDo] vector direction need to be determined...

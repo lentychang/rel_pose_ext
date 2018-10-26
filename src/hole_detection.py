@@ -554,7 +554,6 @@ def align_holes(shp, matched_hole_pairs):
                     R[1][0], R[1][1], R[1][2],
                     R[2][0], R[2][1], R[2][2])
     q = gp_Quaternion(RgpMat)
-    ipdb.set_trace()
 
     trsf = gp_Trsf()
     trsf.SetTranslation(mvVecB2O)
@@ -591,7 +590,6 @@ def match_singleHole(solid_add, solid_base):
     pntList_add_proj = [ais_ProjectPointOnPlane(pnt, projPln) for pnt in pntList_add]
 
     mvVec = get_shortest_vec(pntList_add_proj, pntList_base_proj)
-    ipdb.set_trace()
     trsf = gp_Trsf()
     trsf.SetTranslation(mvVec)
     solid_add.Move(TopLoc_Location(trsf))
@@ -693,7 +691,7 @@ def group_cyl_byPln(solid, distTol=0.5, angTolDeg=5.0):
         CylinderGrpsFromDiffPln[dirKey] = []
         parallel_cyl_grps = cyl_dirGrp[dirKey].copy()
         grp_cylinderOnSamePln = {}
-        while len(parallel_cyl_grps) > 1:
+        while len(parallel_cyl_grps) >= 1:
             # take out the first element for creating plane, and search the other cylinders on the same plane
             firstCylinder = parallel_cyl_grps.pop(0)
             # fitting a geomety surface to TopoDS_Surface
@@ -783,7 +781,6 @@ def __test_multiHoleMatching():
     frame = Display(solid_base, run_display=True)
     frame.add_shape(solid_add)
     frame.open()
-    ipdb.set_trace()
 
 
 def __test_singleHoleMatching():
