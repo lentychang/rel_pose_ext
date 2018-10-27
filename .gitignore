@@ -1,3 +1,5 @@
 src/logging.txt
 pythonocc_examples/
-
+build/*
+models/*
+*.pyc
