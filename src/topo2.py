@@ -94,7 +94,7 @@ class RecognizeTopo():
                 listLen.append(numberOfShapes)
             if numberOfShapes >= 1:
                 level = level + 1
-        print('level = ', level)
+        # print('level = ', level)
 
         if self.__isDebug:
             for k in range(0, len(element_list) - 1):
