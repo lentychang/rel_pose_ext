@@ -5,6 +5,8 @@
     "python.linting.enabled": true,
     "terminal.integrated.fontFamily": "monospace",
     "python.autoComplete.extraPaths": [
-        "/opt/ros/kinetic/lib/python2.7/dist-packages"
-    ]
+        "/opt/ros/kinetic/lib/python2.7/dist-packages",
+        
+    ],
+    "python.linting.flake8Args": ["--ignore=E501"]
 }
