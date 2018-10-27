@@ -8,7 +8,7 @@ import ipdb
 import numpy as np
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeSolid, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
+from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
 from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
 from OCC.GC import GC_MakeSegment
 from OCC.BRepGProp import brepgprop_VolumeProperties
@@ -115,7 +115,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
     #                               (1, 0, 0): [BRepBuilderAPI_MakeFace(plnYZ).Face()],
     #                               (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
     if normal_base_withPlanes is None:
-        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))   
+        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))
         normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()]}
     normals_base = normal_base_withPlanes.keys()
     normals_add = normal_add_withPlanes.keys()
@@ -216,7 +216,7 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.
             for topoPln2 in axisGrp2[axKeyPair[1]]:
                 surf2 = BRepAdaptor_Surface(topoPln2, True)
                 pln2 = surf2.Plane()
-                print('Distance:', pln2.Distance(plnpnt1))
+                # print('Distance:', pln2.Distance(plnpnt1))
                 dist = pln2.Distance(plnpnt1)
                 if dist < min_dist:
                     min_dist = dist
