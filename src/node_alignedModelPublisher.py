@@ -25,10 +25,10 @@ def orientation2list(orientation):
 class Align():
     def __init__(self):
         rospy.init_node('aligned_model_publisher')
-        self.__recognizeModelTopic = sys.argv[1]
+        self.__subTopic_detectedObj_beforeAligned = sys.argv[1]
         self.__tf2Topic = sys.argv[2]
         self.__modelDir = sys.argv[3]
-        self.__pubTopic = sys.argv[4]
+        self.__pubTopic_detectObjs_afterAligned = sys.argv[4]
 
 
         self.rate = rospy.Rate(1)
@@ -36,12 +36,12 @@ class Align():
         self.objLocMsgOut = objectLocalization()
         self.tf2 = TransformStamped()
         self.solids = []
-        self.publisher =rospy.Publisher(self.__pubTopic, objectLocalization, queue_size=1)
+        self.publisher =rospy.Publisher(self.__pubTopic_detectObjs_afterAligned, objectLocalization, queue_size=1)
         self.__enablePub = True
         # self.frame = Display()
 
     def __register_subcriber(self):
-        self.localFrameSubscriber = rospy.Subscriber(self.__recognizeModelTopic, objectLocalization, self.__objLocSubCb)
+        self.localFrameSubscriber = rospy.Subscriber(self.__subTopic_detectedObj_beforeAligned, objectLocalization, self.__objLocSubCb)
         self.tf2Subscriber = rospy.Subscriber(self.__tf2Topic, TransformStamped, self.__tf2SubCb)
 
 
@@ -86,11 +86,14 @@ class Align():
     
     def alignAll(self):
         # first align to Z axis
-        autoPlaneAlign(solid_add=self.solids[0], solid_base=None, negletParallelPln=False)
-        for i in range(0, len(self.objLocMsgIn.modelList) - 1):
-            self.align(i)
+        if len(self.solids) != 0:
+            autoPlaneAlign(solid_add=self.solids[0], solid_base=None, negletParallelPln=False)
+            for i in range(0, len(self.objLocMsgIn.modelList) - 1):
+                self.align(i)
+        else:
+            rospy.logwarn("No Model detected, check topic: %s", self.__subTopic_detectedObj_beforeAligned)
     
-    def preparePubMsg(self):
+    def preparePubMsg(self, pubUnitIsMeter=True):
         self.objLocMsgOut = copy.deepcopy(self.objLocMsgIn)
         # rospy.logdebug("length of modelList %d" % (len((self.objLocMsgIn.modelList))))
         # rospy.logdebug("length of solids %d" % (len((self.solids))))        
@@ -103,6 +106,11 @@ class Align():
             self.objLocMsgOut.pose[i].position.x = t.X()
             self.objLocMsgOut.pose[i].position.y = t.Y()
             self.objLocMsgOut.pose[i].position.z = t.Z()
+            if pubUnitIsMeter:
+                self.objLocMsgOut.pose[i].position.x /= 1000.0
+                self.objLocMsgOut.pose[i].position.y /= 1000.0
+                self.objLocMsgOut.pose[i].position.z /= 1000.0
+
             self.objLocMsgOut.pose[i].orientation.x = q.X()
             self.objLocMsgOut.pose[i].orientation.y = q.Y()
             self.objLocMsgOut.pose[i].orientation.z = q.Z()
@@ -119,7 +127,7 @@ class Align():
         while (not rospy.is_shutdown()) and self.__enablePub:
             self.getSolids()
             self.alignAll()
-            self.preparePubMsg()
+            self.preparePubMsg(pubUnitIsMeter=True)
             self.publisher.publish(self.objLocMsgOut)
             self.rate.sleep()
             rospy.logdebug("\n\npublish Once!\n\n")
@@ -167,7 +175,7 @@ def __test_align():
     tmp.showModels(init=False)
 
 
-def __test_pub_start():
+def main():
     tmp = Align()
     tmp.pub_start()
 
@@ -177,4 +185,4 @@ if __name__ == "__main__":
     # __test_activate_subscriberOnce()
     # __test_readModelsFromTopic()
     #__test_align()
-    __test_pub_start()
+    main()

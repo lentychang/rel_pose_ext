@@ -1,19 +1,19 @@
 <?xml version='1.0'?>
 <launch>
-    <arg name="sub_from_recognizedModelTopic" default="/detectedObjs_preliminary" 
+    <arg name="subTopic_detectedObjs_beforeAligned" default="/detectedObjs_beforeAligned" 
          doc="topic about models' pose detected from camera"/>
     <arg name="camera2worldtf2" default="/tf2_kinect2_world" 
          doc="tf2 that transform from camera to world"/>
     <arg name="modelDir" default="/root/exchange/tempData/models" 
          doc="absolute path that stores all stp models in mm unit"/>
-    <arg name="pub_to_alignedModelTopic" default="/detectedObjs_afterAligned" 
+    <arg name="pubTopic_detectedObjs_afterAligned" default="/detectedObjs_afterAligned" 
          doc="after alignment, publish improved pose to this topic"/>
 
     <node name="aligned_model_publisher" pkg="rel_pose_ext" type="node_alignedModelPublisher.py" output="screen" respawn="false"
-          args="$(arg sub_from_recognizedModelTopic) 
+          args="$(arg subTopic_detectedObjs_beforeAligned) 
                 $(arg camera2worldtf2) 
                 $(arg modelDir) 
-                $(arg pub_to_alignedModelTopic)">
+                $(arg pubTopic_detectedObjs_afterAligned)">
     </node>
 
 </launch>
