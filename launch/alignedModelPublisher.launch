@@ -4,7 +4,7 @@
          doc="topic about models' pose detected from camera"/>
     <arg name="camera2worldtf2" default="/tf2_kinect2_world" 
          doc="tf2 that transform from camera to world"/>
-    <arg name="modelDir" default="/root/catkin_ws/src/rel_pose_ext/models" 
+    <arg name="modelDir" default="/root/exchange/tempData/models" 
          doc="absolute path that stores all stp models in mm unit"/>
     <arg name="pub_to_alignedModelTopic" default="/detectedObjs_afterAligned" 
          doc="after alignment, publish improved pose to this topic"/>
