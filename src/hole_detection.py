@@ -16,6 +16,7 @@ from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln, gp_Trsf, gp_Di
 from OCC.TopLoc import TopLoc_Location
 from OCC.BRepClass3d import BRepClass3d_SolidExplorer
 
+import rospy
 
 class Hole():
     def __init__(self, topods_shp, proj_pln=None):
@@ -41,7 +42,7 @@ def test_print_projPnt(holeList):
     n = 1
     for i in holeList:
         pnt = i.projLocation
-        print('hole %d: (%.3f, %.3f, %.3f)' % (n, pnt.X(), pnt.Y(), pnt.Z()))
+        rospy.logdebug('hole %d: (%.3f, %.3f, %.3f)' % (n, pnt.X(), pnt.Y(), pnt.Z()))
         n += 1
 
 
@@ -49,8 +50,8 @@ def test_print_matchedPntPairXYZ(matchedPairList):
     for matchedPair in matchedPairList:
         loc1 = matchedPair[0].cyl.Location()
         loc2 = matchedPair[1].cyl.Location()
-        print('Base: (%.3f, %.3f, %.3f) , %s' % (loc1.X(), loc1.Y(), loc1.Z(), matchedPair[0].shp.HashCode(1000000)))
-        print('Add : (%.3f, %.3f, %.3f) , %s' % (loc2.X(), loc2.Y(), loc2.Z(), matchedPair[1].shp.HashCode(1000000)))
+        rospy.logdebug('Base: (%.3f, %.3f, %.3f) , %s' % (loc1.X(), loc1.Y(), loc1.Z(), matchedPair[0].shp.HashCode(1000000)))
+        rospy.logdebug('Add : (%.3f, %.3f, %.3f) , %s' % (loc2.X(), loc2.Y(), loc2.Z(), matchedPair[1].shp.HashCode(1000000)))
 
 
 def create_holeList(topds_shp_list, proj_pln=None):
@@ -328,7 +329,6 @@ def find_n_max(countList1, countList2):
         ls.sort()
         n = len(ls)
         for i in range(max(ls), 0, -1):
-            print(i)
             if i in ls:
                 count = n - ls.index(i)
                 if count >= i + 1:
@@ -363,7 +363,7 @@ def get_holes_pairs(list1, list2, projPlane, roundDigit_lin=6, roundDigit_ang=6)
     dist_set2 = set(list(distTable2.values()))
     commonDist = dist_set1.intersection(dist_set2)
     if len(commonDist) == 0:
-        print('There''s no common hole pairs !!!')
+        rospy.logwarn('There''s no common hole pairs !!!')
         return []
 
     # table with common distance
@@ -487,11 +487,11 @@ def get_holes_pairs(list1, list2, projPlane, roundDigit_lin=6, roundDigit_ang=6)
             if m == n:
                 holeMatchingPair.append([i, j])
         if len(holeMatchingPair) != 0:
-            print('[Warn] One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')
-        print('[Warn] There''s no common hole pairs !!!')
+            rospy.logwarn('One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')
+        rospy.logwarn('There''s no common hole pairs !!!')
         return []
     # test_print_matchedPntPairXYZ(holeMatchingPair)
-    print('[Info] Found Matching Pairs: %d\n' % len(holeMatchingPair))
+    rospy.logdebug('Found Matching Pairs: %d\n' % len(holeMatchingPair))
     return holeMatchingPair
 
 
@@ -501,7 +501,7 @@ def centerOfMass_pnts(pnts):
         xSum += pnt.X()
         ySum += pnt.Y()
         zSum += pnt.Z()
-        # print('%.2f, %.2f, %.2f' % (pnt.X(), pnt.Y(), pnt.Z()))
+        # rospy.logdebug('%.2f, %.2f, %.2f' % (pnt.X(), pnt.Y(), pnt.Z()))
     n = len(pnts)
     centerOfMass = gp_Pnt(xSum / n, ySum / n, zSum / n)
     return centerOfMass
@@ -545,7 +545,7 @@ def align_holes(shp, matched_hole_pairs):
 
     # if R has determinant -1, then R is a rotation plus a reflection
     if linAlg.det(R) < 0:
-        print('det(R) is < 0, change the sign of last column of Vh')
+        rospy.logdebug('det(R) is < 0, change the sign of last column of Vh')
         R = reverseMat * (Vh.transpose()) * U.transpose()
 
     # q = quaternion_from_matrix(R)
@@ -626,9 +626,9 @@ def autoHoleAlign(solid_add, solid_base):
         match_singleHole(solid_add, solid_base)
         holeAlignResult = "half"
     elif holePair == 0:
-        print("no hole pair found")
+        rospy.logwarn("No hole pair found")
         holeAlignResult = "failed"
-    print("Result of Hole alignment: %s" % (holeAlignResult))
+    rospy.logdebug("Result of Hole alignment: %s" % (holeAlignResult))
     return holeAlignResult
 
 
@@ -763,12 +763,7 @@ def selectCylinderFromClosestPln(solid_add, solid_base, roundingDigit=6):
 
 
 def __test_multiHoleMatching():
-    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
-                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
-                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
-                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match_3.stp', 'holes_match_tilt_1.stp',
-                'holes_match_morehole_1.stp', 'holes_match_morehole_default_1.stp', 'holes_match_default_2.stp']
+    fileList = ['lf064-01.stp', 'lf064-0102_1.stp', 'holes_match_default_2.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-1]))
     shp_topo = RecognizeTopo(shapeFromModel)
 
@@ -784,13 +779,8 @@ def __test_multiHoleMatching():
 
 
 def __test_singleHoleMatching():
-    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
-                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
-                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
-                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match_3.stp', 'holes_match_tilt_1.stp',
-                'holes_match_morehole_1.stp', 'holes_match_morehole_default_1.stp', 'holes_match_default_2.stp']
-    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-6]))
+    fileList = ['lf064-01.stp', 'lf064-0102_1.stp', 'holes_match_default_2.stp']
+    shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[1]))
     shp_topo = RecognizeTopo(shapeFromModel)
 
     solid_base = shp_topo.solids[0]

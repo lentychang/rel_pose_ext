@@ -29,6 +29,9 @@ from open3d import read_point_cloud, write_point_cloud
 import sys
 from topo2 import RecognizeTopo
 
+import ipdb
+import rospy
+
 
 def stp2pcd(stpName, modelDir):
     baseName = stpName.split('.')[0]
@@ -114,17 +117,17 @@ def read_step_file(filename):
     """ read the STEP file and returns a compound
     """
     step_reader = STEPControl_Reader()
+    rospy.loginfo("### Read Step File ###")
     status = step_reader.ReadFile(filename)
-
     if status == IFSelect_RetDone:  # check status
-        failsonly = False
-        step_reader.PrintCheckLoad(failsonly, IFSelect_ItemsByEntity)
-        step_reader.PrintCheckTransfer(failsonly, IFSelect_ItemsByEntity)
+        # failsonly = True
+        # step_reader.PrintCheckLoad(failsonly, IFSelect_ItemsByEntity)
+        # step_reader.PrintCheckTransfer(failsonly, IFSelect_ItemsByEntity)
         step_reader.TransferRoot(1)
         a_shape = step_reader.Shape(1)
     else:
-        print('Current Path:', os.getcwd())
-        print("Error: can't read file.")
+        rospy.logdebug('Current Path:', os.getcwd())
+        rospy.logerr("Error: can't read file.")
         sys.exit(0)
     return a_shape
 
@@ -320,10 +323,7 @@ class Display():
 def test():
     logging.basicConfig(filename="logging.txt", filemode='w',
                         level=logging.warning)
-    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
-                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
-                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
-                'cylinder_with_slot.stp', 'cylinders.stp']
+    fileList = ['lf064-01.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[0]))
     showShapes = shapeFromModel
 

@@ -36,7 +36,7 @@ class Align():
         self.objLocMsgOut = objectLocalization()
         self.tf2 = TransformStamped()
         self.solids = []
-        self.publisher =rospy.Publisher(self.__modelDir, objectLocalization, queue_size=1)
+        self.publisher =rospy.Publisher(self.__pubTopic, objectLocalization, queue_size=1)
         self.__enablePub = True
         # self.frame = Display()
 
@@ -56,7 +56,7 @@ class Align():
             i += 1
             rospy.sleep(0.1)
         self.__unregister_subcriber()
-        # print("subscribe once")
+        # rospy.logdebug("subscribe once")
 
     def __objLocSubCb(self, msg):
         self.objLocMsgIn = msg
@@ -92,10 +92,10 @@ class Align():
     
     def preparePubMsg(self):
         self.objLocMsgOut = copy.deepcopy(self.objLocMsgIn)
-        # print("length of modelList %d" % (len((self.objLocMsgIn.modelList))))
-        # print("length of solids %d" % (len((self.solids))))        
+        # rospy.logdebug("length of modelList %d" % (len((self.objLocMsgIn.modelList))))
+        # rospy.logdebug("length of solids %d" % (len((self.solids))))        
         for i in range(0, len(self.solids)):
-            #print("i: %d" % (i))
+            #rospy.logdebug("i: %d" % (i))
             self.objLocMsgOut.headers[i].stamp= rospy.Time.now()
             trsf = self.solids[i].Location().Transformation()
             q = trsf.GetRotation()
@@ -107,7 +107,7 @@ class Align():
             self.objLocMsgOut.pose[i].orientation.y = q.Y()
             self.objLocMsgOut.pose[i].orientation.z = q.Z()
             self.objLocMsgOut.pose[i].orientation.w = q.W()
-            # print("TranslationXYZ: (%f, %f, %f)\nquaternionXYZW: (%f, %f, %f, %f)\n" % (t.X(), t.Y(), t.Z(), q.X(), q.Y(), q.Z(), q.W()))
+            # rospy.logdebug("TranslationXYZ: (%f, %f, %f)\nquaternionXYZW: (%f, %f, %f, %f)\n" % (t.X(), t.Y(), t.Z(), q.X(), q.Y(), q.Z(), q.W()))
 
     
     def pub_start(self):
@@ -122,15 +122,15 @@ class Align():
             self.preparePubMsg()
             self.publisher.publish(self.objLocMsgOut)
             self.rate.sleep()
-            print("\n\npublish Once!\n\n")
+            rospy.logdebug("\n\npublish Once!\n\n")
         self.__unregister_subcriber()
     
    
     def testSubscriber(self):
         self.__register_subcriber()
         while not rospy.is_shutdown():
-            print(self.objLocMsgIn)
-            print(self.tf2)
+            rospy.logdebug(self.objLocMsgIn)
+            rospy.logdebug(self.tf2)
             self.rate.sleep()
         self.__unregister_subcriber()
 
@@ -143,8 +143,8 @@ def __testSubscriber():
 def __test_activate_subscriberOnce():
     tmp = Align()
     tmp.activate_subscriberOnce()
-    # print("ModelName subscribed: %s" % (tmp.objLocMsgIn.modelList))
-    # print("tf2 subscribed: %s" % (tmp.tf2.header))
+    # rospy.logdebug("ModelName subscribed: %s" % (tmp.objLocMsgIn.modelList))
+    # rospy.logdebug("tf2 subscribed: %s" % (tmp.tf2.header))
 
 
 def __test_readModelsFromTopic():

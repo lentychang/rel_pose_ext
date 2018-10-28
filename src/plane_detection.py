@@ -19,6 +19,8 @@ from OCC.TopLoc import TopLoc_Location
 from dataIO import Display, read_step_file, solid_comp, write_step_file
 from topo2 import RecognizeTopo
 
+import rospy
+
 
 def group_planes_by_axis(shape):
     """[summary]
@@ -33,7 +35,7 @@ def group_planes_by_axis(shape):
                   value: list of TopoDS_Shape(Plane)
     """
     if shape is None:
-        print("[Warn] input shape is None")
+        rospy.logwarn("Input shape is None")
         pln_dict = None
     else:
         planeList = RecognizeTopo(shape).planes()
@@ -67,7 +69,7 @@ def mv2CMass(shp, pnt):
 # Rotate main axis into global Z axis
 def turn2Z(shp, mainDir):
     ax3 = gp_Ax3(gp_Pnt(0, 0, 0), mainDir)
-    print('Coordinates:%.3f, %.3f, %.3f' % (ax3.XDirection().X(), ax3.XDirection().Y(), ax3.XDirection().Z()))
+    rospy.logdebug('Coordinates:%.3f, %.3f, %.3f' % (ax3.XDirection().X(), ax3.XDirection().Y(), ax3.XDirection().Z()))
     shp2Trsf = gp_Trsf()
     shp2Trsf.SetTransformation(ax3)
     shp2Toploc = TopLoc_Location(shp2Trsf)
@@ -131,7 +133,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
             complementary_angle = 180.0 - ang
             min_ang = min(ang, complementary_angle)
             if negelet_parallelPair and min_ang <= ang_tol / 10:
-                print('neglet parallel planes')
+                rospy.logdebug('neglet parallel planes')
                 continue
 
             if abs(min_ang - minPair['minVal']) <= ang_tol:
@@ -165,7 +167,7 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add, rotateAng):
         shp2Toploc = TopLoc_Location(shp2Trsf)
         shp_add.Move(shp2Toploc)
     else:
-        print("[Info] Planes are already parallel to each other")
+        rospy.logdebug("Planes are already parallel to each other")
 
 
 def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):
@@ -216,7 +218,7 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.
             for topoPln2 in axisGrp2[axKeyPair[1]]:
                 surf2 = BRepAdaptor_Surface(topoPln2, True)
                 pln2 = surf2.Plane()
-                # print('Distance:', pln2.Distance(plnpnt1))
+                # rospy.logdebug('Distance:', pln2.Distance(plnpnt1))
                 dist = pln2.Distance(plnpnt1)
                 if dist < min_dist:
                     min_dist = dist
@@ -276,12 +278,7 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
 
 
 def __test_autoPlaneAlign():
-    fileList = ['lf064-01.stp', 'cylinder_group_test.stp', 'cylinder_cut.stp',
-                'cylinder_cut2.stp', 'face_recognition_sample_part.stp',
-                'cylinder_with_side_hole.stp', 'cylinder_with_side_slot.stp',
-                'cylinder_with_slot.stp', 'cylinders.stp', 'compound_solid_face-no-contact.stp',
-                'lf064-02.stp', 'lf064-0102_1.stp', 'holes_match.stp', 'holes_match_tilt.stp',
-                'holes_match_morehole.stp', 'holes_match_morehole_default.stp']
+    fileList = ['lf064-01.stp', 'lf064-0102_1.stp', 'holes_match_morehole_default.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[-1]))
     shp_topo = RecognizeTopo(shapeFromModel)
     solid1 = shp_topo.solids[0]
@@ -293,7 +290,7 @@ def __test_autoPlaneAlign():
     ipdb.set_trace(context=10)
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
     autoPlaneAlign(solid_base=solid1, solid_add=solid2, negletParallelPln=True)
-    write_step_file(solid_comp([solid1, solid2]), 'holes_match_morehole_default_1.stp')
+    write_step_file(solid_comp([solid1, solid2]), 'write_step_file_test.stp')
     frame.open()
 
 
