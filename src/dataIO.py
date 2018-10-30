@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: <utf-8> -*-
 
 from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
@@ -31,7 +31,6 @@ from topo2 import RecognizeTopo
 
 import ipdb
 import rospy
-
 
 def stp2pcd(stpName, modelDir):
     baseName = stpName.split('.')[0]
