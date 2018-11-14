@@ -779,7 +779,7 @@ def __test_multiHoleMatching():
 
 
 def __test_singleHoleMatching():
-    fileList = ['lf064-01.stp', 'lf064-0102_1.stp', 'holes_match_default_2.stp']
+    fileList = ['lf064-01.stp', 'lf064-0102_1.stp', 'holes_match_default.stp']
     shapeFromModel = read_step_file(os.path.join('..', 'models', fileList[1]))
     shp_topo = RecognizeTopo(shapeFromModel)
 
