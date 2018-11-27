@@ -25,4 +25,15 @@
    Now the algorithm takes point from location of plane which means it's a point from infinite plane. It doesn't guarantee the point is inside the boundary of surface  
    ----------!!!!!!!----------  
 7. Move the model (Translation along normal)
+
 ### Hole alignment
+
+1. Group all holes(cylinders) by axis direction
+2. **Under the assumption that all holes are composed of two half cylinders surface**, filter out cylinders which have no pairs and is single. i.e. round angle
+3. Given angle tolerance, find axis direction pairs between two parts that are to be aligned.
+4. Rotate one of the parts to parallelize them according to the holes axis pair that has the closest angle
+5. Project all center of the holes with given direction to the contact planes. Connect all points and compute all the relative distance and angles between each two connection. By doing so, we can get a relationship table
+6. Compare the relationship table from two parts and eliminate the holes(point) which doesn't exist in both parts.
+7. The rest of points could be the holes which are able to be aligned. **(Holes' diameter is not considered in my algorithm till now)**
+8. If there is only one hole the matching process is different from matching two holes.
+9. If there are more than two holes, it uses SVD to match them.
