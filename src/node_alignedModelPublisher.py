@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: <utf-8> -*-
 
+import copy
+import sys
+
+import ipdb
+import rospy
+from geometry_msgs.msg import TransformStamped
+from thesis_visualization_msgs.msg import objectLocalization
+
 # export PYTHONPATH="/root/catkin_ws/devel/lib/python2.7/dist-packages:/opt/ros/kinetic/lib/python2.7/dist-packages"
 # from topo2 import RecognizeTopo
-from dataIO import read_stp_solid_withTf, Display
-import rospy
-import sys
-from thesis_visualization_msgs.msg import objectLocalization
-from geometry_msgs.msg import TransformStamped
-import ipdb
+from dataIO import Display, read_stp_solid_withTf
+from hole_detection import autoHoleAlign
 from plane_detection import autoPlaneAlign
-from hole_detection import getNHoleCouldBeMatched, autoHoleAlign
-import copy
-import threading
+
 
 def position2list(position):
     return [position.x, position.y, position.z]
@@ -30,20 +32,18 @@ class Align():
         self.__modelDir = sys.argv[3]
         self.__pubTopic_detectObjs_afterAligned = sys.argv[4]
 
-
         self.rate = rospy.Rate(1)
         self.objLocMsgIn = objectLocalization()
         self.objLocMsgOut = objectLocalization()
         self.tf2 = TransformStamped()
         self.solids = []
-        self.publisher =rospy.Publisher(self.__pubTopic_detectObjs_afterAligned, objectLocalization, queue_size=1)
+        self.publisher = rospy.Publisher(self.__pubTopic_detectObjs_afterAligned, objectLocalization, queue_size=1)
         self.__enablePub = True
         # self.frame = Display()
 
     def __register_subcriber(self):
         self.localFrameSubscriber = rospy.Subscriber(self.__subTopic_detectedObj_beforeAligned, objectLocalization, self.__objLocSubCb)
         self.tf2Subscriber = rospy.Subscriber(self.__tf2Topic, TransformStamped, self.__tf2SubCb)
-
 
     def __unregister_subcriber(self):
         self.localFrameSubscriber.unregister()
@@ -63,11 +63,13 @@ class Align():
 
     def __tf2SubCb(self, msg2):
         self.tf2 = msg2
-
+        
     def getSolids(self):
         self.solids = []
         for i in range(0, len(self.objLocMsgIn.modelList)):
-            modelname = self.objLocMsgIn.modelList[i]
+            modelname = self.objLocMsgIn.modelList[i].split("_")[0]
+            # reform modelname lf06401--> lf064-01
+            modelname = modelname[:-2] + "-" + modelname[-2:]
             translation = position2list(self.objLocMsgIn.pose[i].position)
             quaternion = orientation2list(self.objLocMsgIn.pose[i].orientation)
             self.solids.append(read_stp_solid_withTf(modelDir=self.__modelDir, stpFilename=modelname, vecXYZlist=translation, quaternionXYZWlist=quaternion, unitIsMM=False))
@@ -79,11 +81,10 @@ class Align():
                 self.frame.add_shape(self.solids[i])
         self.frame.open()
 
-
     def align(self, i):
         autoPlaneAlign(solid_add=self.solids[i + 1], solid_base=self.solids[i], negletParallelPln=False)
         autoHoleAlign(solid_add=self.solids[i + 1], solid_base=self.solids[i])
-    
+
     def alignAll(self):
         # first align to Z axis
         if len(self.solids) != 0:
@@ -92,14 +93,14 @@ class Align():
                 self.align(i)
         else:
             rospy.logwarn("No Model detected, check topic: %s", self.__subTopic_detectedObj_beforeAligned)
-    
+
     def preparePubMsg(self, pubUnitIsMeter=True):
         self.objLocMsgOut = copy.deepcopy(self.objLocMsgIn)
         # rospy.logdebug("length of modelList %d" % (len((self.objLocMsgIn.modelList))))
         # rospy.logdebug("length of solids %d" % (len((self.solids))))        
         for i in range(0, len(self.solids)):
-            #rospy.logdebug("i: %d" % (i))
-            self.objLocMsgOut.headers[i].stamp= rospy.Time.now()
+            # rospy.logdebug("i: %d" % (i))
+            self.objLocMsgOut.headers[i].stamp = rospy.Time.now()
             trsf = self.solids[i].Location().Transformation()
             q = trsf.GetRotation()
             t = trsf.TranslationPart()
@@ -117,13 +118,12 @@ class Align():
             self.objLocMsgOut.pose[i].orientation.w = q.W()
             # rospy.logdebug("TranslationXYZ: (%f, %f, %f)\nquaternionXYZW: (%f, %f, %f, %f)\n" % (t.X(), t.Y(), t.Z(), q.X(), q.Y(), q.Z(), q.W()))
 
-    
     def pub_start(self):
         self.__enablePub = True
         self.__register_subcriber()
-        for i in range(0,3):
+        for i in range(0, 3):
             self.rate.sleep()
-        
+
         while (not rospy.is_shutdown()) and self.__enablePub:
             self.getSolids()
             self.alignAll()
@@ -132,8 +132,7 @@ class Align():
             self.rate.sleep()
             rospy.logdebug("\n\npublish Once!\n\n")
         self.__unregister_subcriber()
-    
-   
+
     def testSubscriber(self):
         self.__register_subcriber()
         while not rospy.is_shutdown():
@@ -146,7 +145,7 @@ class Align():
 def __testSubscriber():
     tmp = Align()
     tmp.testSubscriber()
-    
+
 
 def __test_activate_subscriberOnce():
     tmp = Align()
@@ -184,5 +183,5 @@ if __name__ == "__main__":
     # __testSubscriber()
     # __test_activate_subscriberOnce()
     # __test_readModelsFromTopic()
-    #__test_align()
+    # __test_align()
     main()

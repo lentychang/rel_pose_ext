@@ -208,6 +208,7 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.
         solid_base = gen_boxSolidAsTable()
     axisGrp1 = group_planes_by_axis(solid_base)
     axisGrp2 = group_planes_by_axis(solid_add)
+    ipdb.set_trace()
     axisPair = ang_list['minAxisKeyPair']
     for axKeyPair in axisPair:
         for topoPln1 in axisGrp1[axKeyPair[0]]:

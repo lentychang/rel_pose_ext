@@ -1,22 +1,25 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
-import numpy as np
-from dataIO import read_step_file, Display, extractDictByVal, tuple2gpDir, deg2PlusMinusPi
-from topo2 import RecognizeTopo
-import os.path
 import logging
+import os.path
+from math import degrees, radians
+
+import ipdb
+import numpy as np
+import rospy
+from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
 from OCC.GeomAbs import GeomAbs_Cylinder
-import ipdb
-from math import radians, degrees
-from core_topology_traverse import Topo
-from OCC.AIS import ais_ProjectPointOnPlane
-from OCC.gp import gp_Pnt, gp_Vec, gp_Quaternion, gp_Mat, gp_Pln, gp_Trsf, gp_Dir
+from OCC.gp import (gp_Dir, gp_Mat, gp_Pln, gp_Pnt, gp_Quaternion, gp_Trsf,
+                    gp_Vec)
 from OCC.TopLoc import TopLoc_Location
-from OCC.BRepClass3d import BRepClass3d_SolidExplorer
 
-import rospy
+from core_topology_traverse import Topo
+from dataIO import (Display, deg2PlusMinusPi, extractDictByVal, read_step_file,
+                    tuple2gpDir)
+from topo2 import RecognizeTopo
+
 
 class Hole():
     def __init__(self, topods_shp, proj_pln=None):

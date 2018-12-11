@@ -1,36 +1,39 @@
 #!/usr/bin/python3
 # -*- coding: <utf-8> -*-
 
-from OCC.STEPControl import STEPControl_Reader, STEPControl_Writer, STEPControl_AsIs
-from OCC.Interface import Interface_Static_SetCVal
-from OCC.IFSelect import IFSelect_RetDone, IFSelect_ItemsByEntity
+import logging
 import os
 import os.path
 import sys
-import logging
-import numpy as np
-from OCC.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
-from OCC.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.gp import gp_Vec, gp_Quaternion, gp_Dir, gp_Trsf
-from OCC.TopLoc import TopLoc_Location
-from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone, GeomAbs_Sphere,\
-                        GeomAbs_Torus, GeomAbs_BezierSurface, GeomAbs_BSplineSurface,\
-                        GeomAbs_SurfaceOfRevolution, GeomAbs_SurfaceOfExtrusion,\
-                        GeomAbs_OffsetSurface, GeomAbs_OtherSurface,\
-                        GeomAbs_Line, GeomAbs_Circle, GeomAbs_Ellipse,\
-                        GeomAbs_Hyperbola, GeomAbs_Parabola, GeomAbs_BezierCurve,\
-                        GeomAbs_BSplineCurve, GeomAbs_OtherCurve
-from core_topology_traverse import Topo
-from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
-from OCC.Display.SimpleGui import init_display
-from OCC.StlAPI import StlAPI_Writer
-import pyassimp
-from open3d import read_point_cloud, write_point_cloud
-import sys
-from topo2 import RecognizeTopo
 
 import ipdb
+import numpy as np
+import pyassimp
 import rospy
+from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCC.BRepMesh import BRepMesh_IncrementalMesh
+from OCC.Display.SimpleGui import init_display
+from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BezierSurface,
+                         GeomAbs_BSplineCurve, GeomAbs_BSplineSurface,
+                         GeomAbs_Circle, GeomAbs_Cone, GeomAbs_Cylinder,
+                         GeomAbs_Ellipse, GeomAbs_Hyperbola, GeomAbs_Line,
+                         GeomAbs_OffsetSurface, GeomAbs_OtherCurve,
+                         GeomAbs_OtherSurface, GeomAbs_Parabola, GeomAbs_Plane,
+                         GeomAbs_Sphere, GeomAbs_SurfaceOfExtrusion,
+                         GeomAbs_SurfaceOfRevolution, GeomAbs_Torus)
+from OCC.gp import gp_Dir, gp_Quaternion, gp_Trsf, gp_Vec
+from OCC.IFSelect import IFSelect_RetDone
+from OCC.Interface import Interface_Static_SetCVal
+from OCC.STEPControl import (STEPControl_AsIs, STEPControl_Reader,
+                             STEPControl_Writer)
+from OCC.StlAPI import StlAPI_Writer
+from OCC.TopLoc import TopLoc_Location
+from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
+from open3d import read_point_cloud, write_point_cloud
+
+from core_topology_traverse import Topo
+from topo2 import RecognizeTopo
+
 
 def stp2pcd(stpName, modelDir):
     baseName = stpName.split('.')[0]
@@ -52,7 +55,7 @@ def stp2pcd(stpName, modelDir):
 def stp2ply(stpName, modelDir):
     baseName = stpName.split('.')[0]
     stlName = baseName + '_mm.stl'
-    plyName = baseName + '_mm.ply'
+    # plyName = baseName + '_mm.ply'
     stp2stl(filename=stpName, fileIODir=modelDir, linDeflection=0.1, solidOnly=True)
     stl2ply(filename=stlName, fileIODir=modelDir)
     os.remove(os.path.join(modelDir, stlName))
@@ -117,6 +120,7 @@ def read_step_file(filename):
     """
     step_reader = STEPControl_Reader()
     rospy.loginfo("### Read Step File ###")
+    ipdb.set_trace()
     status = step_reader.ReadFile(filename)
     if status == IFSelect_RetDone:  # check status
         # failsonly = True
@@ -358,4 +362,3 @@ if __name__ == "__main__":
     __test_read_stp_solid_withTf()
 
     # ipdb.set_trace()
-

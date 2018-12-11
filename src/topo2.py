@@ -1,23 +1,22 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
-from OCC.GeomAbs import GeomAbs_Line, GeomAbs_Circle, GeomAbs_Ellipse, \
-                        GeomAbs_Hyperbola, GeomAbs_Parabola, \
-                        GeomAbs_BezierCurve, GeomAbs_BSplineCurve, \
-                        GeomAbs_OtherCurve
-from OCC.GeomAbs import GeomAbs_Plane, GeomAbs_Cylinder, \
-                        GeomAbs_SurfaceOfExtrusion, GeomAbs_Cone, \
-                        GeomAbs_BSplineSurface, GeomAbs_SurfaceOfRevolution, \
-                        GeomAbs_Torus
-# from OCC.TopoDS import topods_Face, topods_Edge, TopoDS_Iterator
-from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-from core_topology_traverse import Topo
 # from enum import Enum
 import logging
-
 # disable due to the file is import to dataIO for testing
 # from dataIO import read_step_file
 import os.path
+
+# from OCC.TopoDS import topods_Face, topods_Edge, TopoDS_Iterator
+from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BSplineCurve,
+                         GeomAbs_BSplineSurface, GeomAbs_Circle, GeomAbs_Cone,
+                         GeomAbs_Cylinder, GeomAbs_Ellipse, GeomAbs_Hyperbola,
+                         GeomAbs_Line, GeomAbs_OtherCurve, GeomAbs_Parabola,
+                         GeomAbs_Plane, GeomAbs_SurfaceOfExtrusion,
+                         GeomAbs_SurfaceOfRevolution, GeomAbs_Torus)
+
+from core_topology_traverse import Topo
 
 
 class RecognizeTopo():
@@ -201,4 +200,3 @@ def __test_RecognizeTopo():
 if __name__ == '__main__':
     __test_RecognizeTopo()
     # gui = Display(shapeFromModel, run_display=True) 
-
