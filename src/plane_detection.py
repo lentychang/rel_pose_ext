@@ -10,7 +10,6 @@ from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
 from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
-from OCC.GC import GC_MakeSegment
 from OCC.BRepGProp import brepgprop_VolumeProperties
 from OCC.gp import gp_Ax1, gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCC.GProp import GProp_GProps
@@ -148,7 +147,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
     return minPair
 
 
-def align_planes_byNormal(shp_add, normalDir_base, normalDir_add, rotateAng):
+def align_planes_byNormal(shp_add, normalDir_base, normalDir_add):
     """[summary]
 
     Arguments:
@@ -159,9 +158,16 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add, rotateAng):
     """
     if not normalDir_base.IsParallel(normalDir_add, radians(0.01)):
         rotateAxDir = normalDir_base.Crossed(normalDir_add)
+        # determin rotate angle
+        rotRelAng = degrees(normalDir_base.AngleWithRef(normalDir_add, rotateAxDir))
+        if rotRelAng > 89.99:
+            rotRelAng -= 180
+        elif rotRelAng < -89.99:
+            rotRelAng += 180
+
         rotateAx1 = gp_Ax1(centerOfMass(shp_add), rotateAxDir)
         ax3 = gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1))
-        ax3 = ax3.Rotated(rotateAx1, radians(rotateAng))
+        ax3 = ax3.Rotated(rotateAx1, radians(rotRelAng))
         shp2Trsf = gp_Trsf()
         shp2Trsf.SetTransformation(ax3)
         shp2Toploc = TopLoc_Location(shp2Trsf)
@@ -263,8 +269,8 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_
     # [ToDo] use While loop to rotate until angle smaller than given angle tolerance
     # need to weight by the area of surface
 
-    # here we only align the first pair
-    align_planes_byNormal(solid_add, ang_list['minGpDirPair'][0][0], ang_list['minGpDirPair'][0][1], rotateAng=ang_list['minVal'])
+    # [WARN] where there are more than one Pair found, take only the first one pair
+    align_planes_byNormal(solid_add, ang_list['minGpDirPair'][0][0], ang_list['minGpDirPair'][0][1])
 
     # Match planes
     if match_planes:
