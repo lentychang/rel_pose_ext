@@ -244,7 +244,7 @@ def align_closest_planes(shp, mvVec):
     shp.Move(shp2Toploc)
 
 
-def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
+def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_z=1.0, match_planes=False):
     """ A function to align solids with it's parallel plane pairs
     If solid_base is not given, by default, the added solid will be align to xy-plane
 
@@ -256,7 +256,7 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
         negletParallelPln {bool} -- Set it False to cacel alignmet, if there's already parallel planes (default: {False})
     """
     # find normal of closest plane pairs
-    ang_list = find_closest_normal_pair(solid_add=solid_add, solid_base=solid_base, negelet_parallelPair=negletParallelPln)
+    ang_list = find_closest_normal_pair(solid_add=solid_add, solid_base=solid_base, negelet_parallelPair=negletParallelPln, xyplane_z=xyplane_z)
 
     # Get rotation axis
     # [ToDo] the angle value related to rotation direction is not define clearly
@@ -267,15 +267,15 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False):
     # here we only align the first pair
     align_planes_byNormal(solid_add, ang_list['minGpDirPair'][0][0], ang_list['minGpDirPair'][0][1], rotateAng=ang_list['minVal'])
 
-    # Plane distance detection
-    # [ToDo] a better algorithm to choose the correct plane is needed
-
-    minDistPair = get_closest_parallel_planePair(solid_add, solid_base)
-
-    # Move plane to be coincident
-    # [ToDo] vector direction need to be determined...
-    # [ToDo] while loop to move until distance smaller than given distance tolerance
-    align_closest_planes(solid_add, minDistPair['mvVec'])
+    # Match planes
+    if match_planes:
+        # Plane distance detection
+        # [ToDo] a better algorithm to choose the correct plane is needed
+        minDistPair = get_closest_parallel_planePair(solid_add, solid_base)
+        # Move plane to be coincident
+        # [ToDo] vector direction need to be determined...
+        # [ToDo] while loop to move until distance smaller than given distance tolerance
+        align_closest_planes(solid_add, minDistPair['mvVec'])
 
 
 def __test_autoPlaneAlign():
