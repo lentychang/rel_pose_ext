@@ -117,7 +117,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
     #                               (1, 0, 0): [BRepBuilderAPI_MakeFace(plnYZ).Face()],
     #                               (0, 1, 0): [BRepBuilderAPI_MakeFace(plnZX).Face()]}
     if normal_base_withPlanes is None:
-        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0)))
+        plnXY = gp_Pln(gp_Ax3(gp_Pnt(0.0, 0.0, xyplane_z), gp_Dir(0.0, 0.0, 1.0)))
         normal_base_withPlanes = {(0, 0, 1): [BRepBuilderAPI_MakeFace(plnXY).Face()]}
     normals_base = normal_base_withPlanes.keys()
     normals_add = normal_add_withPlanes.keys()
