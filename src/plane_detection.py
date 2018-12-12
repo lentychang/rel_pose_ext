@@ -84,7 +84,7 @@ def centerOfMass(solid):
     return prop.CentreOfMass()
 
 
-def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=False, ang_tol=0.5):
+def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=False, ang_tol=0.5, xyplane_z=0.0):
     """[summary]
     # [ToDo] sort by angle difference
     Return the direction pairs with least difference of orientation of normal.
