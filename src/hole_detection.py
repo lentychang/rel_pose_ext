@@ -157,7 +157,7 @@ def __group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1, roundDigit=6)
                    round(location1.Z(), roundDigit))
         key = (axisDir1, cylLoc1)
 
-        if key not in cyl_ax_grp:
+        if key not in cyl_ax_grp.keys():
             cyl_ax_grp[key] = [cylinders[i]]
         else:
             logging.warning('Error !!! Please check the logic again !')
@@ -170,7 +170,7 @@ def __group_coaxial_cylinders(cylinders, tol_ang=0.5, tol_lin=0.1, roundDigit=6)
                 continue
             cyl2 = BRepAdaptor_Surface(cylinders[j]).Cylinder()
             axis2 = cyl2.Axis()
-            if axis1.IsCoaxial(axis2, tol_rad, tol_lin):
+            if axis1.IsCoaxial(axis2, tol_rad, tol_lin) or axis1.IsCoaxial(axis2.Reversed(), tol_rad, tol_lin):
                 # logging.debug('Coaxial !!')
                 cyl_ax_grp[key].append(cylinders[j])
                 skipList.append(j)
