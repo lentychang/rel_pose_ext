@@ -190,7 +190,7 @@ def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):
     return BRepPrimAPI_MakePrism(faceProfile, aPrismVec).Shape()
 
 
-def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.0):
+def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=1000.0):
     """
     Arguments:
         solid_add {TopoDS_Solid} -- The solid going to be added
@@ -208,7 +208,6 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=10.
         solid_base = gen_boxSolidAsTable()
     axisGrp1 = group_planes_by_axis(solid_base)
     axisGrp2 = group_planes_by_axis(solid_add)
-    ipdb.set_trace()
     axisPair = ang_list['minAxisKeyPair']
     for axKeyPair in axisPair:
         for topoPln1 in axisGrp1[axKeyPair[0]]:
