@@ -623,9 +623,11 @@ def autoHoleAlign(solid_add, solid_base):
     holeAlignResult = "failed"
     holePair = getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0)
     if holePair > 1:
+        print("Multihole match")
         match_multiHoles(solid_add, solid_base)
         holeAlignResult = "succeed"
     elif holePair == 1:
+        print("singel hole match")
         match_singleHole(solid_add, solid_base)
         holeAlignResult = "half"
     elif holePair == 0:
@@ -677,9 +679,15 @@ def getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0):
 
     tfValue = []
     for i in commonList:
-        tfValue.append(min(len(__group_coaxial_cylinders(holeAxGrp_base[i[0]])), len(__group_coaxial_cylinders(holeAxGrp_add[i[1]]))))
+        n_incoaxial_full_cylinder_base = len(__group_coaxial_cylinders(holeAxGrp_base[i[0]]))
+        n_incoaxial_full_cylinder_add = len(__group_coaxial_cylinders(holeAxGrp_add[i[1]]))
+        tfValue.append(min(n_incoaxial_full_cylinder_base, n_incoaxial_full_cylinder_add))
 
-    return max(tfValue)
+    if tfValue == []:
+        print("[WARN] No hole alignment possible")
+        return 0
+    else:
+        return max(tfValue)
 
 
 def group_cyl_byPln(solid, distTol=0.5, angTolDeg=5.0):
@@ -794,7 +802,6 @@ def __test_singleHoleMatching():
     frame = Display(solid_base, run_display=True)
     frame.add_shape(solid_add)
     frame.open()
-    ipdb.set_trace()
 
 
 if __name__ == '__main__':
