@@ -195,7 +195,6 @@ class Display():
         self.open(run_display=run_display)
 
     def open(self, shape=None, run_display=True):
-        # Todo: display shape from shape_list
         self.callbackIsRegistered = False
         if run_display:
             if shape is not None:
