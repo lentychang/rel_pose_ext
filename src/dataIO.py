@@ -120,7 +120,6 @@ def read_step_file(filename):
     """
     step_reader = STEPControl_Reader()
     rospy.loginfo("### Read Step File ###")
-    ipdb.set_trace()
     status = step_reader.ReadFile(filename)
     if status == IFSelect_RetDone:  # check status
         # failsonly = True
