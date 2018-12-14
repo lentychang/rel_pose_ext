@@ -11,8 +11,7 @@ import rospy
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
 from OCC.GeomAbs import GeomAbs_Cylinder
-from OCC.gp import (gp_Dir, gp_Mat, gp_Pln, gp_Pnt, gp_Quaternion, gp_Trsf,
-                    gp_Vec)
+from OCC.gp import gp_Dir, gp_Mat, gp_Pln, gp_Pnt, gp_Quaternion, gp_Trsf, gp_Vec, gp_XYZ
 from OCC.TopLoc import TopLoc_Location
 
 from core_topology_traverse import Topo
@@ -514,25 +513,56 @@ def gpVec2npMat(gpVec):
     return np.matrix([[gpVec.X()], [gpVec.Y()], [gpVec.Z()]])
 
 
-def align_holes(shp, matched_hole_pairs):
+def align_mutiHoles(shp, matched_hole_pairs):
     # matching points
     pntsA = [i[0].projLocation for i in matched_hole_pairs]
     pntsB = [i[1].projLocation for i in matched_hole_pairs]
+    normal = gp_Vec(matched_hole_pairs[0][1].direction)
+
+    pntsA_noDuplicates = list(set(pntsA))
+    pntsB_noDuplicates = list(set(pntsB))
+    if len(pntsA_noDuplicates) != len(pntsA) or len(pntsB_noDuplicates) != len(pntsB):
+        print("[WARN] There are duplicated pairs(i.e. [A,B], [B, A]) in the given matched_hole_pairs")
+    assert len(pntsA_noDuplicates) == len(pntsB_noDuplicates), "[Error] data are not pairwise"
+    assert len(pntsA_noDuplicates) >= 2 or len(pntsB_noDuplicates) >= 2, "[FATEL] input hole pairs should be more than 2"
+
+    # Create the 3rd point on the project plane in the perpandicular diretion from the 1st to the 2nd point
+    # [TODO] More test
+    # Now 3rd point was added in the middle, so there will be sysmetry problem?
+    if (len(pntsA_noDuplicates) == 2 and len(pntsB_noDuplicates) == 2):
+        print("[WARN] only 2 hole pairs found, add a dummpy pair to constrain rotating along the normal project plane")
+        # distance between two points, which is used as a scale
+        dist = pntsA_noDuplicates[0].Distance(pntsA_noDuplicates[1]) / 2.0
+        vecA = gp_Vec(pntsA_noDuplicates[0], pntsA_noDuplicates[1])
+        # Translation vector from orignal mid-points to the 3rd point(dummy points)
+        translateVecA = vecA.Crossed(normal).Normalized().Scaled(dist)
+        dummyPntA = centerOfMass_pnts(pntsA_noDuplicates).Translated(translateVecA)
+        pntsA_noDuplicates.append(dummyPntA)
+
+        vecB = gp_Vec(pntsB_noDuplicates[0], pntsB_noDuplicates[1])
+        translateVecB = vecB.Crossed(normal).Normalized().Scaled(dist)
+        dummyPntB = centerOfMass_pnts(pntsB_noDuplicates).Translated(translateVecB)
+        pntsB_noDuplicates.append(dummyPntB)
 
     # center of Mass
-    cenA = centerOfMass_pnts(pntsA)
-    cenB = centerOfMass_pnts(pntsB)
+    cenA = centerOfMass_pnts(pntsA_noDuplicates)
+    cenB = centerOfMass_pnts(pntsB_noDuplicates)
 
     # translation vector from centerOfMass to origin
     mvVecA2O = gp_Vec(cenA, gp_Pnt(0, 0, 0))
     mvVecB2O = gp_Vec(cenB, gp_Pnt(0, 0, 0))
 
     # translate all points, with rigid movement to move solid's center of Mass to origin
-    newPntsA = [i.Translated(mvVecA2O) for i in pntsA]
-    newPntsB = [i.Translated(mvVecB2O) for i in pntsB]
+    newPntsA = [i.Translated(mvVecA2O) for i in pntsA_noDuplicates]
+    newPntsB = [i.Translated(mvVecB2O) for i in pntsB_noDuplicates]
+
+    if newPntsB[1].X() * newPntsA[1].X() < 0:
+        ttmp = newPntsB[0]
+        newPntsB[0] = newPntsB[1]
+        newPntsB[1] = ttmp
 
     # matching 2 points set by SVD, transform from B to A
-    npMatA = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsA]
+    npMatA = [gpVec2npMat((gp_Vec(gp_Pnt(0, 0, 0), i))) for i in newPntsA]
     npMatB = [gpVec2npMat(gp_Vec(gp_Pnt(0, 0, 0), i)) for i in newPntsB]
     varMat = np.asmatrix(np.zeros((3, 3)))
     for i in range(0, len(npMatA)):
@@ -541,14 +571,14 @@ def align_holes(shp, matched_hole_pairs):
     linAlg = np.linalg
     U, s, Vh = linAlg.svd(varMat, full_matrices=True)
     R = Vh.transpose() * U.transpose()
-    # [ToDo] Don't know why third column should multiply -1
-    reverseMat = np.matrix([(1, 0, 0),
-                            (0, 1, 0),
-                            (0, 0, -1)])
 
     # if R has determinant -1, then R is a rotation plus a reflection
     if linAlg.det(R) < 0:
-        rospy.logdebug('det(R) is < 0, change the sign of last column of Vh')
+        # [ToDo] Don't know why third column or row should multiply -1
+        reverseMat = np.matrix([(1, 0, 0),
+                                (0, 1, 0),
+                                (0, 0, -1)])
+        rospy.loginfo('det(R) is < 0, change the sign of last column of Vh')
         R = reverseMat * (Vh.transpose()) * U.transpose()
 
     # q = quaternion_from_matrix(R)
@@ -556,7 +586,12 @@ def align_holes(shp, matched_hole_pairs):
     RgpMat = gp_Mat(R[0][0], R[0][1], R[0][2],
                     R[1][0], R[1][1], R[1][2],
                     R[2][0], R[2][1], R[2][2])
+    # RgpMat = gp_Mat(gp_XYZ(R[0][0], R[1][0], R[2][0]), gp_XYZ(R[0][1], R[1][1], R[2][1]), gp_XYZ(R[0][2], R[1][2], R[2][2]))
     q = gp_Quaternion(RgpMat)
+    # gp_Extrinsic_XYZ = 2
+    # q.GetEulerAngles(2)
+    # qq = gp_Quaternion()
+    # qq.SetVectorAndAngle(gp_Vec(gp_Dir(gp_XYZ(0,0,1))), q.GetEulerAngles(2)[2])
 
     trsf = gp_Trsf()
     trsf.SetTranslation(mvVecB2O)
@@ -605,7 +640,7 @@ def match_multiHoles(solid_add, solid_base):
     # matched_hole_pairs = get_holes_pairs(sel_list1, sel_list2, projPln)
     matched_hole_pairs = get_holes_pairs(cyls_sel_base, cyls_sel_add, projPln)
     if len(matched_hole_pairs) != 0:
-        align_holes(solid_add, matched_hole_pairs)
+        align_mutiHoles(solid_add, matched_hole_pairs)
 
 
 def autoHoleAlign(solid_add, solid_base):
@@ -622,8 +657,12 @@ def autoHoleAlign(solid_add, solid_base):
     """
     holeAlignResult = "failed"
     holePair = getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0)
-    if holePair > 1:
+    if holePair > 2:
         print("Multihole match")
+        match_multiHoles(solid_add, solid_base)
+        holeAlignResult = "succeed"
+    elif holePair == 2:
+        print("2_hole match")
         match_multiHoles(solid_add, solid_base)
         holeAlignResult = "succeed"
     elif holePair == 1:
