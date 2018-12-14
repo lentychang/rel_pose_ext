@@ -215,7 +215,7 @@ class Display():
 
     def add_shape(self, shp):
         self.shape_list.append(shp)
-        self.display.DisplayShape(shp, update=True)
+        # self.display.DisplayShape(shp, update=True)
 
     def remove_shape(self, shp):
         if shp in self.shape_list:
