@@ -181,7 +181,7 @@ class Align():
     def preparePubMsg(self, pubUnitIsMeter=True):
         self.objLocMsgOut = copy.deepcopy(self.objLocMsgIn)
         # rospy.logdebug("length of modelList %d" % (len((self.objLocMsgIn.modelList))))
-        # rospy.logdebug("length of solids %d" % (len((self.solids))))        
+        # rospy.logdebug("length of solids %d" % (len((self.solids))))
         for i in range(0, len(self.solids)):
             # rospy.logdebug("i: %d" % (i))
             self.objLocMsgOut.headers[i].stamp = rospy.Time.now()
@@ -264,8 +264,9 @@ def __test_align2():
     tmp.append_one_solid()
     tmp.showModels(init=True, run_display=False)
     tmp.init_alignZ()
-    tmp.showModels()
+    tmp.showModels(run_display=False)
 
+    # align every part with first part
     for i in range(1, 8):
         tmp.genFakeMsgOnce()
         tmp.append_one_solid()
@@ -273,15 +274,11 @@ def __test_align2():
         rospy.loginfo("Align with XY plane")
         tmp.init_alignZ(align_nth_solid=i)
         rospy.loginfo("Align to the nearest hole")
-        if i in [5]:
-            ipdb.set_trace()
         tmp.alignHoles(baseIdx=0, addIdx=i)
         print("\n")
         tmp.showModels(init=False, run_display=False)
 
-    # align every part with first part
-    # for i in range(1, len(tmp.objLocMsgIn.modelList)):
-    #     tmp.align(baseIdx=0, addIdx=i)
+    rospy.loginfo("Alignment finished!")
     tmp.showModels(init=False)
 
 
