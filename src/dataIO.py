@@ -186,19 +186,19 @@ def solid_comp(solidList):
 
 
 class Display():
-    def __init__(self, shp, run_display=True, *args, **kwargs):
-        self.shape = shp
-        self.shape_list = [shp]
-        self.shape_selected = shp
+    def __init__(self, shp=None, run_display=True, *args, **kwargs):
+        self.shape_list = []
+        if shp is not None:
+            self.shape_list.append(shp)
+            self.shape_selected = shp
+
         self.selectMode = 'Edge'
         self.callbackIsRegistered = False
         self.open(run_display=run_display)
 
-    def open(self, shape=None, run_display=True):
+    def open(self, run_display=True):
         self.callbackIsRegistered = False
         if run_display:
-            if shape is not None:
-                self.shape = shape
             self.display, self.start_display, self.add_menu, self.add_function_to_menu = init_display()
             self.__show_all()
             self.add_menu('Selection Mode')
@@ -209,9 +209,12 @@ class Display():
             self.start_display()
 
     def __show_all(self):
-        self.display.DisplayShape(self.shape_list[0], update=False)
-        for i in range(1, len(self.shape_list)):
-            self.display.DisplayShape(self.shape_list[i], update=True)
+        if len(self.shape_list) >= 1:
+            self.display.DisplayShape(self.shape_list[0], update=False)
+            for i in range(1, len(self.shape_list)):
+                self.display.DisplayShape(self.shape_list[i], update=True)
+        else:
+            print("[WARN] No shapes given, please use .add_shape to add the shape to be display")
 
     def add_shape(self, shp):
         self.shape_list.append(shp)
