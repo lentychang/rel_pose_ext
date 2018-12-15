@@ -19,6 +19,7 @@ from dataIO import (Display, deg2PlusMinusPi, extractDictByVal, read_step_file,
                     tuple2gpDir)
 from topo2 import RecognizeTopo
 
+logging.basicConfig(filename='example.log', filemode='w', level=logging.DEBUG)
 
 class Hole():
     def __init__(self, topods_shp, proj_pln=None):
@@ -522,7 +523,7 @@ def align_mutiHoles(shp, matched_hole_pairs):
     pntsA_noDuplicates = list(set(pntsA))
     pntsB_noDuplicates = list(set(pntsB))
     if len(pntsA_noDuplicates) != len(pntsA) or len(pntsB_noDuplicates) != len(pntsB):
-        print("[WARN] There are duplicated pairs(i.e. [A,B], [B, A]) in the given matched_hole_pairs")
+        logging.warn("[WARN] There are duplicated pairs(i.e. [A,B], [B, A]) in the given matched_hole_pairs")
     assert len(pntsA_noDuplicates) == len(pntsB_noDuplicates), "[Error] data are not pairwise"
     assert len(pntsA_noDuplicates) >= 2 or len(pntsB_noDuplicates) >= 2, "[FATEL] input hole pairs should be more than 2"
 
@@ -530,7 +531,7 @@ def align_mutiHoles(shp, matched_hole_pairs):
     # [TODO] More test
     # Now 3rd point was added in the middle, so there will be sysmetry problem?
     if (len(pntsA_noDuplicates) == 2 and len(pntsB_noDuplicates) == 2):
-        print("[WARN] only 2 hole pairs found, add a dummpy pair to constrain rotating along the normal project plane")
+        logging.warn("[WARN] only 2 hole pairs found, add a dummpy pair to constrain rotating along the normal project plane")
         # distance between two points, which is used as a scale
         dist = pntsA_noDuplicates[0].Distance(pntsA_noDuplicates[1]) / 2.0
         vecA = gp_Vec(pntsA_noDuplicates[0], pntsA_noDuplicates[1])
@@ -658,15 +659,15 @@ def autoHoleAlign(solid_add, solid_base):
     holeAlignResult = "failed"
     holePair = getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0)
     if holePair > 2:
-        print("Multihole match")
+        logging.debug("Multihole match")
         match_multiHoles(solid_add, solid_base)
         holeAlignResult = "succeed"
     elif holePair == 2:
-        print("2_hole match")
+        logging.debug("2_hole match")
         match_multiHoles(solid_add, solid_base)
         holeAlignResult = "succeed"
     elif holePair == 1:
-        print("singel hole match")
+        logging.debug("singel hole match")
         match_singleHole(solid_add, solid_base)
         holeAlignResult = "half"
     elif holePair == 0:
@@ -723,7 +724,7 @@ def getNHoleCouldBeMatched(solid_add, solid_base, angTolDeg=5.0):
         tfValue.append(min(n_incoaxial_full_cylinder_base, n_incoaxial_full_cylinder_add))
 
     if tfValue == []:
-        print("[WARN] No hole alignment possible")
+        logging.warn("[WARN] No hole alignment possible")
         return 0
     else:
         return max(tfValue)
