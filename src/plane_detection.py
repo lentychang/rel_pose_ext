@@ -249,7 +249,7 @@ def align_closest_planes(shp, mvVec):
     shp.Move(shp2Toploc)
 
 
-def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_z=1.0, match_planes=False):
+def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_z=1.195, match_planes=False):
     """ A function to align solids with it's parallel plane pairs
     If solid_base is not given, by default, the added solid will be align to xy-plane
 

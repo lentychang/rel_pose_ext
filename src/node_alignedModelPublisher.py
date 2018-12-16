@@ -17,9 +17,6 @@ from hole_detection import autoHoleAlign
 from plane_detection import autoPlaneAlign
 
 
-disable_subscriber = True
-
-
 def position2list(position):
     return [position.x, position.y, position.z]
 
@@ -81,7 +78,6 @@ class Align():
         self.__fakeModelsInBin = []
         self.__fakePosesInBin = []
         self.__initFakeMsg()
-        self.solids = []
         self.__display_initialized = False
 
     def __register_subcriber(self):
@@ -186,14 +182,13 @@ class Align():
         autoHoleAlign(solid_add=self.solids[addIdx], solid_base=self.solids[baseIdx])
 
     def init_alignZ(self, align_nth_solid=0):
-        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False)
+        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False, xyplane_z=1.195, match_planes=False)
 
     def alignAll(self):
         # first align to Z axis
         n_solids = len(self.solids)
         if n_solids > 0:
             for i in range(0, n_solids):
-                # ipdb.set_trace()
                 rospy.logdebug("#### Align {0} ####".format(self.objLocMsgIn.modelList[i]))
                 rospy.logdebug("Align with XY plane")
                 self.init_alignZ(align_nth_solid=i)
