@@ -9,7 +9,7 @@ import sys
 import ipdb
 import numpy as np
 import pyassimp
-import rospy
+#import rospy
 from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.Display.SimpleGui import init_display
@@ -31,8 +31,8 @@ from OCC.TopLoc import TopLoc_Location
 from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
 from open3d import read_point_cloud, write_point_cloud
 
-from core_topology_traverse import Topo
-from topo2 import RecognizeTopo
+from .core_topology_traverse import Topo
+from .topo2 import RecognizeTopo
 
 
 def stp2pcd(stpName, modelDir):
@@ -119,7 +119,7 @@ def read_step_file(filename):
     """ read the STEP file and returns a compound
     """
     step_reader = STEPControl_Reader()
-    rospy.loginfo("### Read Step File ###")
+    logging.info("### Read Step File ###")
     status = step_reader.ReadFile(filename)
     if status == IFSelect_RetDone:  # check status
         # failsonly = True
@@ -128,8 +128,8 @@ def read_step_file(filename):
         step_reader.TransferRoot(1)
         a_shape = step_reader.Shape(1)
     else:
-        rospy.logdebug('Current Path:', os.getcwd())
-        rospy.logerr("Error: can't read file.")
+        logging.debug('Current Path:', os.getcwd())
+        logging.error("Error: can't read file.")
         sys.exit(0)
     return a_shape
 

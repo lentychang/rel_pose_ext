@@ -12,9 +12,9 @@ from thesis_visualization_msgs.msg import objectLocalization
 
 # export PYTHONPATH="/root/catkin_ws/devel/lib/python2.7/dist-packages:/opt/ros/kinetic/lib/python2.7/dist-packages"
 # from topo2 import RecognizeTopo
-from dataIO import Display, read_stp_solid_withTf
-from hole_detection import autoHoleAlign
-from plane_detection import autoPlaneAlign
+from rel_pose_ext.dataIO import Display, read_stp_solid_withTf
+from rel_pose_ext.hole_detection import autoHoleAlign
+from rel_pose_ext.plane_detection import autoPlaneAlign
 
 
 def position2list(position):

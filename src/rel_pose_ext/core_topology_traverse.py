@@ -19,20 +19,20 @@
 
 from __future__ import print_function
 
-from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox, BRepPrimAPI_MakeSphere
 from OCC.BRep import BRep_Tool
+from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox, BRepPrimAPI_MakeSphere
 from OCC.BRepTools import BRepTools_WireExplorer
-from OCC.TopAbs import (TopAbs_VERTEX, TopAbs_EDGE, TopAbs_FACE, TopAbs_WIRE,
-                        TopAbs_SHELL, TopAbs_SOLID, TopAbs_COMPOUND,
-                        TopAbs_COMPSOLID)
+from OCC.TopAbs import (TopAbs_COMPOUND, TopAbs_COMPSOLID, TopAbs_EDGE,
+                        TopAbs_FACE, TopAbs_SHELL, TopAbs_SOLID, TopAbs_VERTEX,
+                        TopAbs_WIRE)
 from OCC.TopExp import TopExp_Explorer, topexp_MapShapesAndAncestors
-from OCC.TopTools import (TopTools_ListOfShape,
+from OCC.TopoDS import (TopoDS_Compound, TopoDS_CompSolid, TopoDS_Edge,
+                        TopoDS_Face, TopoDS_Iterator, TopoDS_Shell,
+                        TopoDS_Solid, TopoDS_Vertex, TopoDS_Wire, topods,
+                        topods_Edge, topods_Vertex)
+from OCC.TopTools import (TopTools_IndexedDataMapOfShapeListOfShape,
                           TopTools_ListIteratorOfListOfShape,
-                          TopTools_IndexedDataMapOfShapeListOfShape)
-from OCC.TopoDS import (topods, TopoDS_Wire, TopoDS_Vertex, TopoDS_Edge,
-                        TopoDS_Face, TopoDS_Shell, TopoDS_Solid,
-                        TopoDS_Compound, TopoDS_CompSolid, topods_Edge,
-                        topods_Vertex, TopoDS_Iterator)
+                          TopTools_ListOfShape)
 
 
 class WireExplorer(object):

@@ -7,17 +7,17 @@ from math import degrees, radians
 
 import ipdb
 import numpy as np
-import rospy
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
 from OCC.GeomAbs import GeomAbs_Cylinder
-from OCC.gp import gp_Dir, gp_Mat, gp_Pln, gp_Pnt, gp_Quaternion, gp_Trsf, gp_Vec, gp_XYZ
+from OCC.gp import (gp_Dir, gp_Mat, gp_Pln, gp_Pnt, gp_Quaternion, gp_Trsf,
+                    gp_Vec, gp_XYZ)
 from OCC.TopLoc import TopLoc_Location
 
-from core_topology_traverse import Topo
-from dataIO import (Display, deg2PlusMinusPi, extractDictByVal, read_step_file,
-                    tuple2gpDir)
-from topo2 import RecognizeTopo
+from .core_topology_traverse import Topo
+from .dataIO import (Display, deg2PlusMinusPi, extractDictByVal,
+                     read_step_file, tuple2gpDir)
+from .topo2 import RecognizeTopo
 
 logging.basicConfig(filename='example.log', filemode='w', level=logging.DEBUG)
 
@@ -45,7 +45,7 @@ def test_print_projPnt(holeList):
     n = 1
     for i in holeList:
         pnt = i.projLocation
-        rospy.logdebug('hole %d: (%.3f, %.3f, %.3f)' % (n, pnt.X(), pnt.Y(), pnt.Z()))
+        logging.debug('hole %d: (%.3f, %.3f, %.3f)' % (n, pnt.X(), pnt.Y(), pnt.Z()))
         n += 1
 
 
@@ -53,8 +53,8 @@ def test_print_matchedPntPairXYZ(matchedPairList):
     for matchedPair in matchedPairList:
         loc1 = matchedPair[0].cyl.Location()
         loc2 = matchedPair[1].cyl.Location()
-        rospy.logdebug('Base: (%.3f, %.3f, %.3f) , %s' % (loc1.X(), loc1.Y(), loc1.Z(), matchedPair[0].shp.HashCode(1000000)))
-        rospy.logdebug('Add : (%.3f, %.3f, %.3f) , %s' % (loc2.X(), loc2.Y(), loc2.Z(), matchedPair[1].shp.HashCode(1000000)))
+        logging.debug('Base: (%.3f, %.3f, %.3f) , %s' % (loc1.X(), loc1.Y(), loc1.Z(), matchedPair[0].shp.HashCode(1000000)))
+        logging.debug('Add : (%.3f, %.3f, %.3f) , %s' % (loc2.X(), loc2.Y(), loc2.Z(), matchedPair[1].shp.HashCode(1000000)))
 
 
 def create_holeList(topds_shp_list, proj_pln=None):
@@ -366,7 +366,7 @@ def get_holes_pairs(list1, list2, projPlane, roundDigit_lin=6, roundDigit_ang=6)
     dist_set2 = set(list(distTable2.values()))
     commonDist = dist_set1.intersection(dist_set2)
     if len(commonDist) == 0:
-        rospy.logwarn('There''s no common hole pairs !!!')
+        logging.warn('There''s no common hole pairs !!!')
         return []
 
     # table with common distance
@@ -490,11 +490,11 @@ def get_holes_pairs(list1, list2, projPlane, roundDigit_lin=6, roundDigit_ang=6)
             if m == n:
                 holeMatchingPair.append([i, j])
         if len(holeMatchingPair) != 0:
-            rospy.logwarn('One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')
-        rospy.logwarn('There''s no common hole pairs !!!')
+            logging.warn('One of the model need to be mirrored/ or rotate with axis on the plane with its normal parallel to cylinder axis !!!')
+        logging.warn('There''s no common hole pairs !!!')
         return []
     # test_print_matchedPntPairXYZ(holeMatchingPair)
-    rospy.logdebug('Found Matching Pairs: %d\n' % len(holeMatchingPair))
+    logging.debug('Found Matching Pairs: %d\n' % len(holeMatchingPair))
     return holeMatchingPair
 
 
@@ -504,7 +504,7 @@ def centerOfMass_pnts(pnts):
         xSum += pnt.X()
         ySum += pnt.Y()
         zSum += pnt.Z()
-        # rospy.logdebug('%.2f, %.2f, %.2f' % (pnt.X(), pnt.Y(), pnt.Z()))
+        # logging.debug('%.2f, %.2f, %.2f' % (pnt.X(), pnt.Y(), pnt.Z()))
     n = len(pnts)
     centerOfMass = gp_Pnt(xSum / n, ySum / n, zSum / n)
     return centerOfMass
@@ -579,7 +579,7 @@ def align_mutiHoles(shp, matched_hole_pairs):
         reverseMat = np.matrix([(1, 0, 0),
                                 (0, 1, 0),
                                 (0, 0, -1)])
-        rospy.loginfo('det(R) is < 0, change the sign of last column of Vh')
+        logging.info('det(R) is < 0, change the sign of last column of Vh')
         R = reverseMat * (Vh.transpose()) * U.transpose()
 
     # q = quaternion_from_matrix(R)
@@ -671,9 +671,9 @@ def autoHoleAlign(solid_add, solid_base):
         match_singleHole(solid_add, solid_base)
         holeAlignResult = "half"
     elif holePair == 0:
-        rospy.logwarn("No hole pair found")
+        logging.warn("No hole pair found")
         holeAlignResult = "failed"
-    rospy.logdebug("Result of Hole alignment: %s" % (holeAlignResult))
+    logging.debug("Result of Hole alignment: %s" % (holeAlignResult))
     return holeAlignResult
 
 

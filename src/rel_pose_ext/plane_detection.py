@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: <utf-8> -*-
 
+import logging
 import os.path
 from math import degrees, radians
 
@@ -8,17 +9,17 @@ import ipdb
 import numpy as np
 from OCC.AIS import ais_ProjectPointOnPlane
 from OCC.BRepAdaptor import BRepAdaptor_Surface
-from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire
-from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
+from OCC.BRepBuilderAPI import (BRepBuilderAPI_MakeEdge,
+                                BRepBuilderAPI_MakeFace,
+                                BRepBuilderAPI_MakeWire)
 from OCC.BRepGProp import brepgprop_VolumeProperties
+from OCC.BRepPrimAPI import BRepPrimAPI_MakePrism
 from OCC.gp import gp_Ax1, gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCC.GProp import GProp_GProps
 from OCC.TopLoc import TopLoc_Location
 
-from dataIO import Display, read_step_file, solid_comp, write_step_file
-from topo2 import RecognizeTopo
-
-import rospy
+from .dataIO import Display, read_step_file, solid_comp, write_step_file
+from .topo2 import RecognizeTopo
 
 
 def group_planes_by_axis(shape):
@@ -34,7 +35,7 @@ def group_planes_by_axis(shape):
                   value: list of TopoDS_Shape(Plane)
     """
     if shape is None:
-        rospy.logwarn("Input shape is None")
+        logging.warn("Input shape is None")
         pln_dict = None
     else:
         planeList = RecognizeTopo(shape).planes()
@@ -132,7 +133,7 @@ def find_closest_normal_pair(solid_add, solid_base=None, negelet_parallelPair=Fa
             complementary_angle = 180.0 - ang
             min_ang = min(ang, complementary_angle)
             if negelet_parallelPair and min_ang <= ang_tol / 10:
-                rospy.logdebug('neglet parallel planes')
+                logging.debug('neglet parallel planes')
                 continue
 
             if abs(min_ang - minPair['minVal']) <= ang_tol:
@@ -173,7 +174,7 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add):
         shp2Toploc = TopLoc_Location(shp2Trsf)
         shp_add.Move(shp2Toploc)
     else:
-        rospy.logdebug("Planes are already parallel to each other")
+        logging.debug("Planes are already parallel to each other")
 
 
 def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):

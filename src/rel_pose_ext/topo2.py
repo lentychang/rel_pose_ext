@@ -16,7 +16,7 @@ from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BSplineCurve,
                          GeomAbs_Plane, GeomAbs_SurfaceOfExtrusion,
                          GeomAbs_SurfaceOfRevolution, GeomAbs_Torus)
 
-from core_topology_traverse import Topo
+from .core_topology_traverse import Topo
 
 
 class RecognizeTopo():
