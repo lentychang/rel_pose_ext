@@ -243,6 +243,26 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=100
     return {'minDist': dist, 'topoPair': minDistTopoPair, 'geomPair': minDistGeomPair, 'mvVec': mvVec}
 
 
+def get_planePair_with_dist(solid1, solid2):
+    def get_xyplanes(a_solid):
+        # return a list of planes (todods_face) with a normal of z-direction
+        planes = ["topods_face"]
+        pass
+        return [planes]
+
+    planes1 = get_xyplanes(solid1)
+    planes2 = get_xyplanes(solid2)
+    pass
+
+    # compute sum of dist to choose which plane from base solid to attach
+
+    planePairs = [{'dist_val': [planes1[0], planes2[1]]}]
+    return planePairs
+
+
+def coincident_planes():
+    pass
+
 def align_closest_planes(shp, mvVec):
     shp2Trsf = gp_Trsf()
     shp2Trsf.SetTranslation(mvVec)
