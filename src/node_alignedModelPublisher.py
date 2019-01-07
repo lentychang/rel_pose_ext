@@ -182,7 +182,7 @@ class Align():
         autoHoleAlign(solid_add=self.solids[addIdx], solid_base=self.solids[baseIdx])
 
     def init_alignZ(self, align_nth_solid=0):
-        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False, xyplane_z=1.195, match_planes=False)
+        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False, xyplane_z=1.2, match_planes=False)
 
     def alignAll(self):
         # first align to Z axis
