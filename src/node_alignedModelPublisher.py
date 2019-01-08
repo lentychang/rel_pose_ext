@@ -15,6 +15,7 @@ from thesis_visualization_msgs.msg import objectLocalization
 from rel_pose_ext.dataIO import Display, read_stp_solid_withTf
 from rel_pose_ext.hole_detection import autoHoleAlign
 from rel_pose_ext.plane_detection import autoPlaneAlign
+import csv
 
 
 def position2list(position):
@@ -55,7 +56,7 @@ def list2pose(xyzxyzw):
 
 class Align():
     def __init__(self):
-        rospy.init_node('aligned_model_publisher')
+        rospy.init_node('aligned_model_publisher',  disable_signals=True)
         if len(sys.argv) >= 5:
             self.__subTopic_detectedObj_beforeAligned = sys.argv[1]
             self.__tf2Topic = sys.argv[2]
@@ -117,7 +118,7 @@ class Align():
                                  [0.0969141154042, 0.150417286296, 1.00112320288, -0.0865704879567, 0.0938614468037, -0.0120670678191, 0.991740876083],
                                  [0.07518621408, 0.212001413843, 1.04784130973, -0.0144559164571, 0.134463670046, -0.00685760157496, 0.990789342503]]
 
-    # fakeSubscriber
+    # fakeSubscriber for testing
     def fakeSubscriberSubOnce(self):
         def append_one_solid():
             if len(self.__fakeModelsInBin) != 0 or len(self.solids) != len(self.objLocMsgIn.modelList):
@@ -181,8 +182,8 @@ class Align():
     def alignHoles(self, baseIdx, addIdx):
         autoHoleAlign(solid_add=self.solids[addIdx], solid_base=self.solids[baseIdx])
 
-    def init_alignZ(self, align_nth_solid=0):
-        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False, xyplane_z=1.2, match_planes=False)
+    def init_alignZ(self, align_nth_solid=0, match_planes=False):
+        autoPlaneAlign(solid_add=self.solids[align_nth_solid], solid_base=None, negletParallelPln=False, xyplane_z=1.215, match_planes=match_planes)
 
     def alignAll(self):
         # first align to Z axis
@@ -191,10 +192,11 @@ class Align():
             for i in range(0, n_solids):
                 rospy.logdebug("#### Align {0} ####".format(self.objLocMsgIn.modelList[i]))
                 rospy.logdebug("Align with XY plane")
-                self.init_alignZ(align_nth_solid=i)
                 if i == 0:
+                    self.init_alignZ(align_nth_solid=0, match_planes=True)
                     continue
                 else:
+                    self.init_alignZ(align_nth_solid=i, match_planes=False)
                     rospy.logdebug("Align to the nearest hole")
                 self.alignHoles(baseIdx=0, addIdx=i)
                 self.showModels(run_display=False)
@@ -245,7 +247,49 @@ class Align():
             self.rate.sleep()
             rospy.logdebug("\npublish Once!\n")
             self.solids = []
+            self.__log_pose_difference_once(shutdown_rosnode=True)
         self.__unregister_subcriber()
+        rospy.loginfo("node_alignModelPublisher is shutdown")
+
+    def __log_pose_difference_once(self, shutdown_rosnode=False):
+        def __prepare_logData(msgIn, msgOut):
+            dataSet = []
+            assert len(msgIn.modelList) == 8, "len of objLocMsgIn should be 8"
+            if len(msgIn.modelList) == len(msgOut.modelList):
+                for i in range(0, len(msgIn.modelList)):
+                    data = ['beforeAlign',
+                            msgIn.pose[i].position.x, 
+                            msgIn.pose[i].position.y, 
+                            msgIn.pose[i].position.z, 
+                            msgIn.pose[i].orientation.x, 
+                            msgIn.pose[i].orientation.y, 
+                            msgIn.pose[i].orientation.z, 
+                            msgIn.pose[i].orientation.w, 
+                            'afterAlign',
+                            msgOut.pose[i].position.x, 
+                            msgOut.pose[i].position.y, 
+                            msgOut.pose[i].position.z, 
+                            msgOut.pose[i].orientation.x, 
+                            msgOut.pose[i].orientation.y, 
+                            msgOut.pose[i].orientation.z, 
+                            msgOut.pose[i].orientation.w]
+                    dataSet.append(data)
+            else:
+                print("modelList from in and out is not the same")
+            return dataSet
+        
+        if len(self.objLocMsgIn.modelList) == 8:
+            dataSet =  __prepare_logData(self.objLocMsgIn, self.objLocMsgOut)
+            if len(dataSet) > 0:
+                # ipdb.set_trace()
+                with open('/root/exchange/beforeAfterAlign.csv', 'a+') as myfile:
+                    wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+                    for data in dataSet:                                
+                        wr.writerow(data)
+                # shutdown rosnode
+                if shutdown_rosnode:
+                    rospy.signal_shutdown("logging finished")
+            
 
     def test_fake_pub_start(self):
         while not rospy.is_shutdown():

@@ -177,7 +177,7 @@ def align_planes_byNormal(shp_add, normalDir_base, normalDir_add):
         logging.debug("Planes are already parallel to each other")
 
 
-def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):
+def gen_boxSolidAsTable(width=1000, depth=1000, height=1215):
     pntList = [gp_Pnt(width / 2., depth / 2., 0),
                gp_Pnt(-width / 2., depth / 2., 0),
                gp_Pnt(-width / 2., -depth / 2., 0),
@@ -197,7 +197,7 @@ def gen_boxSolidAsTable(width=1000, depth=1000, height=1000):
     return BRepPrimAPI_MakePrism(faceProfile, aPrismVec).Shape()
 
 
-def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=1000.0):
+def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=1000.0, xyplane_z_inMM=1215.0):
     """
     Arguments:
         solid_add {TopoDS_Solid} -- The solid going to be added
@@ -212,7 +212,7 @@ def get_closest_parallel_planePair(solid_add, solid_base=None, init_min_dist=100
     min_dist = init_min_dist
     ang_list = find_closest_normal_pair(solid_add, solid_base)
     if solid_base is None:
-        solid_base = gen_boxSolidAsTable()
+        solid_base = gen_boxSolidAsTable(height=xyplane_z_inMM)
     axisGrp1 = group_planes_by_axis(solid_base)
     axisGrp2 = group_planes_by_axis(solid_add)
     axisPair = ang_list['minAxisKeyPair']
@@ -270,7 +270,7 @@ def align_closest_planes(shp, mvVec):
     shp.Move(shp2Toploc)
 
 
-def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_z=1.195, match_planes=False):
+def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_z=1.215, match_planes=False):
     """ A function to align solids with it's parallel plane pairs
     If solid_base is not given, by default, the added solid will be align to xy-plane
 
@@ -297,7 +297,7 @@ def autoPlaneAlign(solid_add, solid_base=None, negletParallelPln=False, xyplane_
     if match_planes:
         # Plane distance detection
         # [ToDo] a better algorithm to choose the correct plane is needed
-        minDistPair = get_closest_parallel_planePair(solid_add, solid_base)
+        minDistPair = get_closest_parallel_planePair(solid_add, solid_base, xyplane_z_inMM=xyplane_z*1000)
         # Move plane to be coincident
         # [ToDo] vector direction need to be determined...
         # [ToDo] while loop to move until distance smaller than given distance tolerance
