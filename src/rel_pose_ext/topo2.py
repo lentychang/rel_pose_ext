@@ -8,8 +8,8 @@ import logging
 import os.path
 
 # from OCC.TopoDS import topods_Face, topods_Edge, TopoDS_Iterator
-from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BSplineCurve,
+from OCC.Core.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCC.Core.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BSplineCurve,
                          GeomAbs_BSplineSurface, GeomAbs_Circle, GeomAbs_Cone,
                          GeomAbs_Cylinder, GeomAbs_Ellipse, GeomAbs_Hyperbola,
                          GeomAbs_Line, GeomAbs_OtherCurve, GeomAbs_Parabola,

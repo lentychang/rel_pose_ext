@@ -10,10 +10,10 @@ import ipdb
 import numpy as np
 import pyassimp
 #import rospy
-from OCC.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-from OCC.BRepMesh import BRepMesh_IncrementalMesh
+from OCC.Core.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
 from OCC.Display.SimpleGui import init_display
-from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BezierSurface,
+from OCC.Core.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BezierSurface,
                          GeomAbs_BSplineCurve, GeomAbs_BSplineSurface,
                          GeomAbs_Circle, GeomAbs_Cone, GeomAbs_Cylinder,
                          GeomAbs_Ellipse, GeomAbs_Hyperbola, GeomAbs_Line,
@@ -21,15 +21,15 @@ from OCC.GeomAbs import (GeomAbs_BezierCurve, GeomAbs_BezierSurface,
                          GeomAbs_OtherSurface, GeomAbs_Parabola, GeomAbs_Plane,
                          GeomAbs_Sphere, GeomAbs_SurfaceOfExtrusion,
                          GeomAbs_SurfaceOfRevolution, GeomAbs_Torus)
-from OCC.gp import gp_Dir, gp_Quaternion, gp_Trsf, gp_Vec
-from OCC.IFSelect import IFSelect_RetDone
-from OCC.Interface import Interface_Static_SetCVal
-from OCC.STEPControl import (STEPControl_AsIs, STEPControl_Reader,
+from OCC.Core.gp import gp_Dir, gp_Quaternion, gp_Trsf, gp_Vec
+from OCC.Core.IFSelect import IFSelect_RetDone
+from OCC.Core.Interface import Interface_Static_SetCVal
+from OCC.Core.STEPControl import (STEPControl_AsIs, STEPControl_Reader,
                              STEPControl_Writer)
-from OCC.StlAPI import StlAPI_Writer
-from OCC.TopLoc import TopLoc_Location
-from OCC.TopoDS import TopoDS_Builder, TopoDS_CompSolid
-from open3d import read_point_cloud, write_point_cloud
+from OCC.Core.StlAPI import StlAPI_Writer
+from OCC.Core.TopLoc import TopLoc_Location
+from OCC.Core.TopoDS import TopoDS_Builder, TopoDS_CompSolid
+from open3d import io as o3d
 
 from .core_topology_traverse import Topo
 from .topo2 import RecognizeTopo
@@ -43,18 +43,18 @@ def stp2pcd(stpName, modelDir):
     stp2stl(filename=stpName, fileIODir=modelDir, linDeflection=0.1, solidOnly=True)
     stl2ply(filename=stlName, fileIODir=modelDir)
     print("Load a ply point cloud, print it, and render it")
-    pcd = read_point_cloud(os.path.join(modelDir, plyName))
+    pcd = o3d.read_point_cloud(os.path.join(modelDir, plyName))
     # print(pcd)
     # print(np.asarray(pcd.points))
     # draw_geometries([pcd])
-    os.remove(os.path.join(modelDir, stlName))
+    # os.remove(os.path.join(modelDir, stlName))
     os.remove(os.path.join(modelDir, plyName))
-    write_point_cloud(os.path.join(modelDir, pcdName), pcd)
+    o3d.write_point_cloud(os.path.join(modelDir, pcdName), pcd)
 
 
 def stp2ply(stpName, modelDir):
     baseName = stpName.split('.')[0]
-    stlName = baseName + '_mm.stl'
+    stlName = baseName + '.stl'
     # plyName = baseName + '_mm.ply'
     stp2stl(filename=stpName, fileIODir=modelDir, linDeflection=0.1, solidOnly=True)
     stl2ply(filename=stlName, fileIODir=modelDir)
@@ -77,7 +77,7 @@ def stp2stl(filename, fileIODir, linDeflection=0.1, angDeflection=0.1, solidOnly
     assert mesh.IsDone()
 
     # set the directory where to output the
-    stlName = os.path.abspath(os.path.join(fileIODir, nameBase + '_mm.stl'))
+    stlName = os.path.abspath(os.path.join(fileIODir, nameBase + '.stl'))
 
     stl_exporter = StlAPI_Writer()
     stl_exporter.SetASCIIMode(True)  # change to False if you need binary export
@@ -346,16 +346,16 @@ def __test_stp2ply():
 
 
 def __test_read_stp_solid_withTf():
-    solid1 = read_stp_solid_withTf("lf064-03", [0.01, 0.01, 1], [0, 0, 1, 0], unitIsMM=False)
-    solid2 = read_stp_as_solid(os.path.join("/root/catkin_ws/src/rel_pose_ext/models", "lf064-02" + ".stp"))
+    solid1 = read_stp_solid_withTf("/root/catkin_ws/src/rel_pose_ext/models", "lf064-01", [0.01, 0.01, 1], [0, 0, 1, 0], unitIsMM=False)
+    solid2 = read_stp_as_solid(os.path.join("/root/catkin_ws/src/rel_pose_ext/models", "lf064-0102_1" + ".stp"))
 
-    frame = Display(solid1, run_display=True)
-    frame.add_shape(solid2)
+    # frame = Display(solid1, run_display=True)
+    # frame.add_shape(solid2)
 
     aa = getTfFromSolid(solid1, outputUnitIsMM=False)
     for i in aa:
         print(i)
-    frame.open()
+    # frame.open()
 
 
 if __name__ == "__main__":
